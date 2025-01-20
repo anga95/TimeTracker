@@ -20,24 +20,33 @@ namespace TimeTracker.Services
         public void SaveTimeLogEntries(DateTime date, IEnumerable<TimeLogEntry> entries)
         {
             var filePath = GetFilePath(date);
-            var json = JsonConvert.SerializeObject(entries);
+            var allEntries = LoadAllEntriesForMonth(date);
+            allEntries[date.Day] = entries.ToList();
+            var sortedEntries = allEntries.OrderBy(e => e.Key).ToDictionary(e => e.Key, e => e.Value);
+            var json = JsonConvert.SerializeObject(sortedEntries, Formatting.Indented);
             File.WriteAllText(filePath, json);
         }
 
         public List<TimeLogEntry> LoadTimeLogEntries(DateTime date)
         {
+            var allEntries = LoadAllEntriesForMonth(date);
+            return allEntries.ContainsKey(date.Day) ? allEntries[date.Day] : new List<TimeLogEntry>();
+        }
+
+        private Dictionary<int, List<TimeLogEntry>> LoadAllEntriesForMonth(DateTime date)
+        {
             var filePath = GetFilePath(date);
             if (File.Exists(filePath))
             {
                 var json = File.ReadAllText(filePath);
-                return JsonConvert.DeserializeObject<List<TimeLogEntry>>(json);
+                return JsonConvert.DeserializeObject<Dictionary<int, List<TimeLogEntry>>>(json);
             }
-            return new List<TimeLogEntry>();
+            return new Dictionary<int, List<TimeLogEntry>>();
         }
 
         private string GetFilePath(DateTime date)
         {
-            return Path.Combine(dataDirectory, $"{date:yyyy-MM-dd}.json");
+            return Path.Combine(dataDirectory, $"{date:yyyy-MM}.json");
         }
     }
 }
