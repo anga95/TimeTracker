@@ -12,6 +12,40 @@ namespace TimeTracker.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
         private readonly DataService dataService;
 
+        // Egenskaper för inmatningsfälten
+        private string _newProjectName;
+        public string NewProjectName
+        {
+            get => _newProjectName;
+            set
+            {
+                _newProjectName = value;
+                OnPropertyChanged(nameof(NewProjectName));
+            }
+        }
+
+        private string _newHoursWorked;
+        public string NewHoursWorked
+        {
+            get => _newHoursWorked;
+            set
+            {
+                _newHoursWorked = value;
+                OnPropertyChanged(nameof(NewHoursWorked));
+            }
+        }
+
+        private string _newComments;
+        public string NewComments
+        {
+            get => _newComments;
+            set
+            {
+                _newComments = value;
+                OnPropertyChanged(nameof(NewComments));
+            }
+        }
+
         private DateTime _selectedDate;
         public DateTime SelectedDate
         {
@@ -20,7 +54,7 @@ namespace TimeTracker.ViewModels
             {
                 if (_selectedDate != value)
                 {
-                    _selectedDate = value;
+                    _selectedDate = value.Date;
                     OnPropertyChanged(nameof(SelectedDate));
                     LoadTimeLogsForSelectedDate();
                 }
@@ -38,17 +72,6 @@ namespace TimeTracker.ViewModels
             }
         }
 
-        private Dictionary<DateTime, bool> _dayCompletionStatus;
-        public Dictionary<DateTime, bool> DayCompletionStatus
-        {
-            get => _dayCompletionStatus;
-            set
-            {
-                _dayCompletionStatus = value;
-                OnPropertyChanged(nameof(DayCompletionStatus));
-            }
-        }
-
         private string _saveStatus;
         public string SaveStatus
         {
@@ -60,77 +83,19 @@ namespace TimeTracker.ViewModels
             }
         }
 
-        private HashSet<DateTime> _completedDates;
-        public HashSet<DateTime> CompletedDates
-        {
-            get => _completedDates;
-            set
-            {
-                _completedDates = value;
-                OnPropertyChanged(nameof(CompletedDates));
-            }
-        }
-
-        private HashSet<DateTime> _incompleteDates;
-        public HashSet<DateTime> IncompleteDates
-        {
-            get => _incompleteDates;
-            set
-            {
-                _incompleteDates = value;
-                OnPropertyChanged(nameof(IncompleteDates));
-            }
-        }
+        public ICommand SaveCommand { get; }
+        public ICommand AddTimeLogEntryCommand { get; }
+        public ICommand DeleteTimeLogEntryCommand { get; }
 
         public MainViewModel()
         {
             dataService = new DataService();
             SelectedDate = DateTime.Today;
             LoadTimeLogsForSelectedDate();
-            LoadDayCompletionStatus();
 
             SaveCommand = new RelayCommand(SaveTimeLogEntries);
-
-            LoadMarkedDates();
-        }
-
-        private void LoadMarkedDates()
-        {
-            CompletedDates = new HashSet<DateTime>();
-            IncompleteDates = new HashSet<DateTime>();
-            var startDate = DateTime.Today.AddMonths(-1);
-            var endDate = DateTime.Today.AddMonths(1);
-
-            for (var date = startDate; date <= endDate; date = date.AddDays(1))
-            {
-                // Hoppa över lördagar och söndagar
-                if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
-                {
-                    continue;
-                }
-
-                var entries = dataService.LoadTimeLogEntries(date.Date);
-                if (entries.Count > 0)
-                {
-                    double totalHours = entries.Sum(e => e.HoursWorked);
-                    if (totalHours >= 8)
-                    {
-                        CompletedDates.Add(date.Date);
-                    }
-                    else
-                    {
-                        IncompleteDates.Add(date.Date);
-                    }
-                }
-                else
-                {
-                    IncompleteDates.Add(date.Date); // Dag utan inmatningar
-                }
-            }
-
-            // Uppdatera bindningarna
-            OnPropertyChanged(nameof(CompletedDates));
-            OnPropertyChanged(nameof(IncompleteDates));
+            AddTimeLogEntryCommand = new RelayCommand(AddTimeLogEntry);
+            DeleteTimeLogEntryCommand = new RelayCommand<TimeLogEntry>(DeleteTimeLogEntry);
         }
 
         private void LoadTimeLogsForSelectedDate()
@@ -139,31 +104,11 @@ namespace TimeTracker.ViewModels
             TimeLogEntries = new ObservableCollection<TimeLogEntry>(entries);
         }
 
-        private void LoadDayCompletionStatus()
-        {
-            DayCompletionStatus = new Dictionary<DateTime, bool>();
-            var startDate = DateTime.Today.AddMonths(-1); // Load status for the past month
-            for (var date = startDate; date <= DateTime.Today.AddMonths(1); date = date.AddDays(1))
-            {
-                var entries = dataService.LoadTimeLogEntries(date.Date);
-                if (entries.Count == 0)
-                {
-                    DayCompletionStatus[date.Date] = false; // Not touched
-                }
-                else
-                {
-                    DayCompletionStatus[date.Date] = entries.TrueForAll(e => e.IsComplete);
-                }
-            }
-            OnPropertyChanged(nameof(DayCompletionStatus));
-        }
-
         protected void OnPropertyChanged(string name)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
-        public ICommand SaveCommand { get; }
         private void SaveTimeLogEntries()
         {
             // Validera indata
@@ -175,14 +120,52 @@ namespace TimeTracker.ViewModels
                 return;
             }
 
-            if (totalHours < 8)
-            {
-                MessageBox.Show("Du har loggat färre än 8 timmar för denna dag.", "Varning", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-
+            // Spara data
             dataService.SaveTimeLogEntries(SelectedDate, TimeLogEntries);
-            LoadMarkedDates(); // Uppdatera markerade datum efter sparande
+
             SaveStatus = "Data sparad!";
+        }
+
+        private void AddTimeLogEntry()
+        {
+            if (double.TryParse(NewHoursWorked, out double hoursWorked))
+            {
+                var newEntry = new TimeLogEntry
+                {
+                    ProjectName = NewProjectName,
+                    HoursWorked = hoursWorked,
+                    Comments = NewComments
+                };
+
+                TimeLogEntries.Add(newEntry);
+
+                // Spara omedelbart
+                dataService.SaveTimeLogEntries(SelectedDate, TimeLogEntries);
+
+                // Töm inmatningsfälten
+                NewProjectName = string.Empty;
+                NewHoursWorked = string.Empty;
+                NewComments = string.Empty;
+
+                SaveStatus = "Data sparad!";
+            }
+            else
+            {
+                MessageBox.Show("Ogiltigt antal timmar. Ange ett numeriskt värde.", "Fel", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteTimeLogEntry(TimeLogEntry entry)
+        {
+            if (entry != null)
+            {
+                TimeLogEntries.Remove(entry);
+
+                // Spara omedelbart
+                dataService.SaveTimeLogEntries(SelectedDate, TimeLogEntries);
+
+                SaveStatus = "Data sparad!";
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using TimeTracker.ViewModels;
 
 namespace TimeTracker.Views
@@ -13,5 +15,11 @@ namespace TimeTracker.Views
             InitializeComponent();
             DataContext = new MainViewModel();
         }
+
+        private void Calendar_SelectedDatesChanged(object sender, SelectionChangedEventArgs e)
+        {
+            Mouse.Capture(null);
+        }
     }
+
 }
