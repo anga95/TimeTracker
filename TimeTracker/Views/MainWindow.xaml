@@ -4,58 +4,88 @@
         Title="TimeTracker" Height="600" Width="800">
     <Grid Margin="10" x:Name="RootGrid" FocusManager.IsFocusScope="True">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Kalendern -->
-        <Calendar x:Name="MyCalendar"
-          SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
-          SelectedDatesChanged="Calendar_SelectedDatesChanged" />
+        <!-- Kalendern i en ram -->
+        <GroupBox Header="Välj datum" Padding="10" Margin="0,0,0,10">
+            <Calendar x:Name="MyCalendar"
+                      SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                      SelectedDatesChanged="Calendar_SelectedDatesChanged" HorizontalAlignment="Left" VerticalAlignment="Top" />
+        </GroupBox>
 
-        <!-- Inmatningsfält + lista -->
-        <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,10,0,0">
+        <!-- Inmatning + lista -->
+        <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Padding="10">
+            <StackPanel Orientation="Vertical">
 
-            <!-- Inmatningsfält med rubriker -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <StackPanel Orientation="Vertical" Margin="0,0,10,0">
-                    <TextBlock Text="Projektnamn" />
+                <!-- Inmatningsfält i en Grid -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Projektnamn -->
+                    <TextBlock Text="Projektnamn:" VerticalAlignment="Center"/>
                     <TextBox x:Name="ProjectNameTextBox"
-                             Width="150"
-                             Text="{Binding NewProjectName}" />
+                             Grid.Column="1"
+                             Margin="5,0,10,0"
+                             Text="{Binding NewProjectName}"/>
+
+                    <!-- Arbetade Timmar -->
+                    <TextBlock Text="Timmar:" Grid.Column="2" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="3" 
+                             Margin="5,0,10,0"
+                             Text="{Binding NewHoursWorked}"/>
+
+                    <!-- Kommentarer -->
+                    <TextBlock Text="Kommentarer:" Grid.Column="4" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="5"
+                             Margin="5,0,10,0"
+                             Text="{Binding NewComments}"/>
+
+                    <!-- Lägg till-knapp -->
+                    <Button Content="Lägg till"
+                            Grid.Column="6"
+                            Command="{Binding AddTimeLogEntryCommand}"
+                            Margin="5,0,0,0"
+                            Padding="10,2"
+                            VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Lista med radera-knapp -->
+                <ListView ItemsSource="{Binding TimeLogEntries}" Margin="0,0,0,10">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="5">
+                                <TextBlock Text="{Binding ProjectName}" Width="150"/>
+                                <TextBlock Text="{Binding HoursWorked}" Width="80"/>
+                                <TextBlock Text="{Binding Comments}" Width="200"/>
+                                <Button Content="X"
+                                        Command="{Binding DataContext.DeleteTimeLogEntryCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                        CommandParameter="{Binding}"
+                                        Width="30" Margin="10,0,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+
+                <!-- Spara & status -->
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Spara"
+                            Command="{Binding SaveCommand}"
+                            Width="100"
+                            Height="30"
+                            Margin="0,0,10,0"/>
+                    <TextBlock Text="{Binding SaveStatus}" Foreground="Green" VerticalAlignment="Center"/>
                 </StackPanel>
-                
-                <StackPanel Orientation="Vertical" Margin="0,0,10,0">
-                    <TextBlock Text="Arbetade Timmar" />
-                    <TextBox Width="80" Text="{Binding NewHoursWorked}" />
-                </StackPanel>
-                <StackPanel Orientation="Vertical" Margin="0,0,10,0">
-                    <TextBlock Text="Kommentarer" />
-                    <TextBox Width="200" Text="{Binding NewComments}" />
-                </StackPanel>
-                <Button Content="Lägg till" Command="{Binding AddTimeLogEntryCommand}" Width="100" VerticalAlignment="Bottom" />
             </StackPanel>
-
-            <!-- Lista med radera-knapp -->
-            <ListView ItemsSource="{Binding TimeLogEntries}" Margin="0,0,0,10">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Margin="5">
-                            <TextBlock Text="{Binding ProjectName}" Width="150" />
-                            <TextBlock Text="{Binding HoursWorked}" Width="80" />
-                            <TextBlock Text="{Binding Comments}" Width="200" />
-                            <Button Content="X"
-                                Command="{Binding DataContext.DeleteTimeLogEntryCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                CommandParameter="{Binding}"
-                                Width="30" Margin="10,0,0,0"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-
-            <!-- Spara & status -->
-            <Button Content="Spara" Command="{Binding SaveCommand}" Width="100" Margin="0,0,0,10"/>
-            <TextBlock Text="{Binding SaveStatus}" Foreground="Green" />
-        </StackPanel>
+        </Border>
     </Grid>
 </Window>
