@@ -30,10 +30,10 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@<commit-hash>
+      uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce
 
     - name: Cache NuGet packages
-      uses: actions/cache@<commit-hash>
+      uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
