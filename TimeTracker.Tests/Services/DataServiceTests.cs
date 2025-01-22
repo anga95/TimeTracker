@@ -7,7 +7,9 @@ namespace TimeTracker.Tests
     public class DataServiceTests
     {
         private string testDirectory;
-        private IDataService dataService;
+        private DataServiceWrapper dataService;
+        private DateTime date = new DateTime(2025, 1, 21);
+        private List<TimeLogEntry> entries;
 
         [SetUp]
         public void SetUp()
@@ -19,6 +21,13 @@ namespace TimeTracker.Tests
                 Directory.CreateDirectory(testDirectory);
             }
 
+            // Skapa några testdata
+            entries = new List<TimeLogEntry>
+            {
+                new TimeLogEntry { ProjectName = "Project A", HoursWorked = 4, Comments = "Worked on feature A" },
+                new TimeLogEntry { ProjectName = "Project B", HoursWorked = 5, Comments = "Bug fixes" }
+            };
+
             // Injicera en "custom" DataService som använder testkatalogen
             dataService = new DataServiceWrapper(testDirectory);
         }
@@ -26,13 +35,7 @@ namespace TimeTracker.Tests
         [Test]
         public void SaveTimeLogEntries_ShouldCreateJsonFile()
         {
-            // Arrange
-            var date = new DateTime(2025, 1, 21);
-            var entries = new List<TimeLogEntry>
-            {
-                new TimeLogEntry { ProjectName = "Project A", HoursWorked = 4, Comments = "Worked on feature A" },
-                new TimeLogEntry { ProjectName = "Project B", HoursWorked = 5, Comments = "Bug fixes" }
-            };
+            // needed Arrange is done in setup
 
             // Act
             dataService.SaveTimeLogEntries(date, entries);
@@ -50,34 +53,33 @@ namespace TimeTracker.Tests
         public void LoadTimeLogEntries_ShouldReturnCorrectData()
         {
             // Arrange
-            var date = new DateTime(2025, 1, 21);
-            var entries = new List<TimeLogEntry>
-            {
-                new TimeLogEntry { ProjectName = "Project C", HoursWorked = 8, Comments = "Full day work" }
-            };
             dataService.SaveTimeLogEntries(date, entries);
 
             // Act
             var loadedEntries = dataService.LoadTimeLogEntries(date);
 
             // Assert
-            Assert.That(loadedEntries, Has.Count.EqualTo(1));
-            Assert.That(loadedEntries[0].ProjectName, Is.EqualTo("Project C"));
-            Assert.That(loadedEntries[0].HoursWorked, Is.EqualTo(8));
-            Assert.That(loadedEntries[0].Comments, Is.EqualTo("Full day work"));
+            Assert.That(loadedEntries, Has.Count.EqualTo(entries.Count()));
+
+            Assert.That(loadedEntries[0].ProjectName, Is.EqualTo(entries[0].ProjectName));
+            Assert.That(loadedEntries[0].HoursWorked, Is.EqualTo(entries[0].HoursWorked));
+            Assert.That(loadedEntries[0].Comments, Is.EqualTo(entries[0].Comments));
+
+            Assert.That(loadedEntries[1].ProjectName, Is.EqualTo(entries[1].ProjectName));
+            Assert.That(loadedEntries[1].HoursWorked, Is.EqualTo(entries[1].HoursWorked));
+            Assert.That(loadedEntries[1].Comments, Is.EqualTo(entries[1].Comments));
         }
 
         [Test]
         public void LoadTimeLogEntries_ShouldReturnEmptyList_WhenNoEntriesExist()
         {
             // Arrange
-            var date = new DateTime(2025, 2, 1);
 
             // Act
-            var entries = dataService.LoadTimeLogEntries(date);
+            var emptyEntries = dataService.LoadTimeLogEntries(date);
 
             // Assert
-            Assert.That(entries, Is.Empty);
+            Assert.That(emptyEntries, Is.Empty);
         }
 
         [TearDown]
