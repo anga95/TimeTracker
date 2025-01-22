@@ -4,7 +4,13 @@ using TimeTracker.Models;
 
 namespace TimeTracker.Services
 {
-    public class DataService
+    public interface IDataService
+    {
+        List<TimeLogEntry> LoadTimeLogEntries(DateTime date);
+        void SaveTimeLogEntries(DateTime date, IEnumerable<TimeLogEntry> entries);
+    }
+
+    public class DataService : IDataService
     {
         private readonly string dataDirectory;
 
@@ -39,12 +45,13 @@ namespace TimeTracker.Services
             if (File.Exists(filePath))
             {
                 var json = File.ReadAllText(filePath);
-                return JsonConvert.DeserializeObject<Dictionary<int, List<TimeLogEntry>>>(json);
+                return JsonConvert.DeserializeObject<Dictionary<int, List<TimeLogEntry>>>(json)
+                        ?? new Dictionary<int, List<TimeLogEntry>>();
             }
             return new Dictionary<int, List<TimeLogEntry>>();
         }
 
-        private string GetFilePath(DateTime date)
+        protected virtual string GetFilePath(DateTime date)
         {
             return Path.Combine(dataDirectory, $"{date:yyyy-MM}.json");
         }

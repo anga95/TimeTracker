@@ -1,7 +1,17 @@
 ﻿<Window x:Class="TimeTracker.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TimeTracker" Height="600" Width="800">
+        Title="TimeTracker" Height="600" Width="800"
+        xmlns:converters="clr-namespace:TimeTracker.Converters"
+        xmlns:services="clr-namespace:TimeTracker.Services">
+    <Window.Resources>
+        <services:DataService x:Key="SharedDataService" />
+
+        <converters:DateToBackgroundConverter x:Key="DateConverter"
+                                              DataService="{StaticResource SharedDataService}" />
+                                              
+    </Window.Resources>
+            
     <Grid Margin="10" x:Name="RootGrid" FocusManager.IsFocusScope="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -11,8 +21,24 @@
         <!-- Kalendern i en ram -->
         <GroupBox Header="Välj datum" Padding="10" Margin="0,0,0,10">
             <Calendar x:Name="MyCalendar"
-                      SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
-                      SelectedDatesChanged="Calendar_SelectedDatesChanged" HorizontalAlignment="Left" VerticalAlignment="Top" />
+              SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+              SelectedDatesChanged="Calendar_SelectedDatesChanged"
+              HorizontalAlignment="Left" VerticalAlignment="Top">
+                <Calendar.Resources>
+
+                    <!-- Style för CalendarDayButton som använder din converter -->
+                    <Style TargetType="CalendarDayButton">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Path=., Converter={StaticResource DateConverter}}"
+                                 Value="True">
+                                <Setter Property="Background" Value="LightGreen"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+
+                </Calendar.Resources>
+            </Calendar>
         </GroupBox>
 
         <!-- Inmatning + lista -->
@@ -78,11 +104,6 @@
 
                 <!-- Spara & status -->
                 <StackPanel Orientation="Horizontal">
-                    <Button Content="Spara"
-                            Command="{Binding SaveCommand}"
-                            Width="100"
-                            Height="30"
-                            Margin="0,0,10,0"/>
                     <TextBlock Text="{Binding SaveStatus}" Foreground="Green" VerticalAlignment="Center"/>
                 </StackPanel>
             </StackPanel>

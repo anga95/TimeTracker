@@ -2,8 +2,8 @@
 {
     public class TimeLogEntry
     {
-        public string ProjectName { get; set; }
+        public required string ProjectName { get; set; }
         public double HoursWorked { get; set; }
-        public string Comments { get; set; }
+        public required string Comments { get; set; }
     }
 }

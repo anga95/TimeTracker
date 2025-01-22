@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using TimeTracker.Models;
@@ -9,40 +10,40 @@ namespace TimeTracker.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-        private readonly DataService dataService;
+        public event PropertyChangedEventHandler? PropertyChanged;
+        private readonly IDataService dataService;
 
         // Egenskaper för inmatningsfälten
-        private string _newProjectName;
+        private string _newProjectName = string.Empty;
         public string NewProjectName
         {
             get => _newProjectName;
             set
             {
                 _newProjectName = value;
-                OnPropertyChanged(nameof(NewProjectName));
+                OnPropertyChanged();
             }
         }
 
-        private string _newHoursWorked;
+        private string _newHoursWorked = string.Empty;
         public string NewHoursWorked
         {
             get => _newHoursWorked;
             set
             {
                 _newHoursWorked = value;
-                OnPropertyChanged(nameof(NewHoursWorked));
+                OnPropertyChanged();
             }
         }
 
-        private string _newComments;
+        private string _newComments = string.Empty;
         public string NewComments
         {
             get => _newComments;
             set
             {
                 _newComments = value;
-                OnPropertyChanged(nameof(NewComments));
+                OnPropertyChanged();
             }
         }
 
@@ -55,31 +56,31 @@ namespace TimeTracker.ViewModels
                 if (_selectedDate != value)
                 {
                     _selectedDate = value.Date;
-                    OnPropertyChanged(nameof(SelectedDate));
+                    OnPropertyChanged();
                     LoadTimeLogsForSelectedDate();
                 }
             }
         }
 
-        private ObservableCollection<TimeLogEntry> _timeLogEntries;
+        private ObservableCollection<TimeLogEntry> _timeLogEntries = new ObservableCollection<TimeLogEntry>();
         public ObservableCollection<TimeLogEntry> TimeLogEntries
         {
             get => _timeLogEntries;
             set
             {
                 _timeLogEntries = value;
-                OnPropertyChanged(nameof(TimeLogEntries));
+                OnPropertyChanged();
             }
         }
 
-        private string _saveStatus;
+        private string _saveStatus = string.Empty;
         public string SaveStatus
         {
             get => _saveStatus;
             set
             {
                 _saveStatus = value;
-                OnPropertyChanged(nameof(SaveStatus));
+                OnPropertyChanged();
             }
         }
 
@@ -87,9 +88,13 @@ namespace TimeTracker.ViewModels
         public ICommand AddTimeLogEntryCommand { get; }
         public ICommand DeleteTimeLogEntryCommand { get; }
 
-        public MainViewModel()
+        public MainViewModel(): this(new DataService())
         {
-            dataService = new DataService();
+        }
+
+        public MainViewModel(IDataService dataService)
+        {
+            this.dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             SelectedDate = DateTime.Today;
             LoadTimeLogsForSelectedDate();
 
@@ -104,9 +109,9 @@ namespace TimeTracker.ViewModels
             TimeLogEntries = new ObservableCollection<TimeLogEntry>(entries);
         }
 
-        protected void OnPropertyChanged(string name)
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private void SaveTimeLogEntries()

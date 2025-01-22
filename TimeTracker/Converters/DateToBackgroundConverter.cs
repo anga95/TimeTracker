@@ -1,44 +1,44 @@
-﻿using System.Globalization;
-using System.Windows;
+﻿using System;
+using System.Globalization;
+using System.Linq;
 using System.Windows.Data;
 using System.Windows.Media;
+using TimeTracker.Services;
 
 namespace TimeTracker.Converters
 {
-    public class DateToBackgroundConverter : IMultiValueConverter
+    /// <summary>
+    /// 
+    /// A IValueConverter that checks how many hours
+    /// that are logged for a given date and returns
+    /// true (or false) depending on if hours >= 8.
+    /// 
+    /// In XAML this return (bool) is used for a DataTrigger
+    /// 
+    /// </summary>
+    public class DateToBackgroundConverter : IValueConverter
     {
-        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (values[0] is DateTime date &&
-                values[1] is HashSet<DateTime> completedDates &&
-                values[2] is HashSet<DateTime> incompleteDates)
-            {
-                // Kontrollera om datumet är en lördag eller söndag
-                if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
-                {
-                    return DependencyProperty.UnsetValue; // Behåll standardstilen
-                }
+        public IDataService? DataService { get; set; }
 
-                if (completedDates.Contains(date.Date))
-                {
-                    return Brushes.Green;
-                }
-                else if (incompleteDates.Contains(date.Date))
-                {
-                    return Brushes.Red;
-                }
-                else
-                {
-                    return Brushes.Yellow; // Datum utan inmatningar
-                }
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is DateTime date)
+            {
+                if (DataService == null) return false;
+
+                var entries = DataService.LoadTimeLogEntries(date);
+                double totalHours = entries.Sum(e => e.HoursWorked);
+
+                return (totalHours >= 8);
             }
 
-            return Brushes.Transparent;
+            // If it's not a valid date - return false
+            return false;
         }
 
-        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
-            throw new NotSupportedException();
+            throw new NotImplementedException();
         }
     }
 }
