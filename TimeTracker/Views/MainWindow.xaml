@@ -1,51 +1,79 @@
 ﻿<Window x:Class="TimeTracker.Views.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TimeTracker" Height="600" Width="800"
         xmlns:converters="clr-namespace:TimeTracker.Converters"
-        xmlns:services="clr-namespace:TimeTracker.Services">
+        xmlns:services="clr-namespace:TimeTracker.Services"
+        Title="TimeTracker" 
+        Height="600" 
+        Width="800">
+
     <Window.Resources>
+        <!-- Gemensam instans av DataService -->
         <services:DataService x:Key="SharedDataService" />
 
-        <converters:DateToBackgroundConverter x:Key="DateConverter"
-                                              DataService="{StaticResource SharedDataService}" />
-                                              
+        <!-- MultiValueConverter för färgläggning -->
+        <converters:DayColorConverter x:Key="DateConverter"
+                                      DataService="{StaticResource SharedDataService}"/>
     </Window.Resources>
-            
-    <Grid Margin="10" x:Name="RootGrid" FocusManager.IsFocusScope="True">
+
+    <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Kalendern i en ram -->
-        <GroupBox Header="Välj datum" Padding="10" Margin="0,0,0,10">
+        <!-- Övre del: Kalendern -->
+        <GroupBox Header="Välj datum" Padding="10" Margin="0,0,0,10" Grid.Row="0">
             <Calendar x:Name="MyCalendar"
-              SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
-              SelectedDatesChanged="Calendar_SelectedDatesChanged"
-              HorizontalAlignment="Left" VerticalAlignment="Top">
-                <Calendar.Resources>
+                      SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+                      DisplayDate="{Binding SelectedDate}"
+                      SelectedDatesChanged="Calendar_SelectedDatesChanged"
+                      BorderThickness="0">
 
-                    <!-- Style för CalendarDayButton som använder din converter -->
+                <!-- Ställ in DayButtonStyle direkt på Calendar -->
+                <Calendar.CalendarDayButtonStyle>
                     <Style TargetType="CalendarDayButton">
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Path=., Converter={StaticResource DateConverter}}"
-                                 Value="True">
-                                <Setter Property="Background" Value="LightGreen"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
+                        <!-- Undvik default-templat som kan skriva över din färg -->
+                        <Setter Property="OverridesDefaultStyle" Value="True"/>
 
-                </Calendar.Resources>
+                        <!-- Enkel template som lyder vårt Background -->
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="CalendarDayButton">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="Gray"
+                                            BorderThickness="0.5"
+                                            Padding="5">
+                                        <ContentPresenter HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+
+                        <!-- Här används din MultiBinding och konverter -->
+                        <Setter Property="Background">
+                            <Setter.Value>
+                                <MultiBinding Converter="{StaticResource DateConverter}">
+                                    <!-- DayNumber: ofta en sträng med t.ex. "23" -->
+                                    <Binding Path="Content" RelativeSource="{RelativeSource Self}" />
+                                    <!-- Year+Month: hämtas från Calendar -->
+                                    <Binding Path="DisplayDate" 
+                                             RelativeSource="{RelativeSource AncestorType=Calendar}" />
+                                </MultiBinding>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Calendar.CalendarDayButtonStyle>
+
             </Calendar>
         </GroupBox>
 
-        <!-- Inmatning + lista -->
+        <!-- Nedre del: Inmatning och listvy -->
         <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Padding="10">
             <StackPanel Orientation="Vertical">
 
-                <!-- Inmatningsfält i en Grid -->
+                <!-- Inmatningsfält -->
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -59,14 +87,13 @@
 
                     <!-- Projektnamn -->
                     <TextBlock Text="Projektnamn:" VerticalAlignment="Center"/>
-                    <TextBox x:Name="ProjectNameTextBox"
-                             Grid.Column="1"
+                    <TextBox Grid.Column="1"
                              Margin="5,0,10,0"
                              Text="{Binding NewProjectName}"/>
 
-                    <!-- Arbetade Timmar -->
+                    <!-- Arbetade timmar -->
                     <TextBlock Text="Timmar:" Grid.Column="2" VerticalAlignment="Center"/>
-                    <TextBox Grid.Column="3" 
+                    <TextBox Grid.Column="3"
                              Margin="5,0,10,0"
                              Text="{Binding NewHoursWorked}"/>
 
@@ -85,7 +112,7 @@
                             VerticalAlignment="Center"/>
                 </Grid>
 
-                <!-- Lista med radera-knapp -->
+                <!-- Listvy med TimeLogEntries -->
                 <ListView ItemsSource="{Binding TimeLogEntries}" Margin="0,0,0,10">
                     <ListView.ItemTemplate>
                         <DataTemplate>
@@ -96,15 +123,18 @@
                                 <Button Content="X"
                                         Command="{Binding DataContext.DeleteTimeLogEntryCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
                                         CommandParameter="{Binding}"
-                                        Width="30" Margin="10,0,0,0"/>
+                                        Width="30"
+                                        Margin="10,0,0,0"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
 
-                <!-- Spara & status -->
+                <!-- Spara och status-text -->
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding SaveStatus}" Foreground="Green" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SaveStatus}"
+                               Foreground="Green"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
             </StackPanel>
         </Border>
