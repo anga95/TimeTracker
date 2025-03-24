@@ -17,7 +17,7 @@
 
 @if (workDays is not null)
 {
-    <h4>- Tidrapporterade dagar -</h4>
+    <h4>Tidrapporterade dagar</h4>
     @foreach (var day in workDays)
     {
         <p><b>@day.Date.ToShortDateString()</b> (Summa: @GetRoundedTotal(day) timmar)</p>
