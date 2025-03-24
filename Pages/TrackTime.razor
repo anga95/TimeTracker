@@ -1,0 +1,64 @@
+﻿@page "/tracktime"
+@using TimeTracker.Models
+@using TimeTracker.Services
+@inject ITimeTrackingService TimeService
+
+<h3>Tidrapportering</h3>
+
+<!-- Grundläggande formulär för att lägga till WorkItem -->
+<EditForm Model="@newWorkItem" OnValidSubmit="@HandleValidSubmit">
+    <InputText @bind-Value="newWorkItem.ProjectName" placeholder="Projekt" />
+    <InputDate @bind-Value="newWorkItem.Start" />
+    <InputDate @bind-Value="newWorkItem.End" />
+    <InputTextArea @bind-Value="newWorkItem.Comment" placeholder="Kommentar (valfritt)" />
+
+    <button type="submit">Lägg till tid</button>
+</EditForm>
+
+@if (workDays is not null)
+{
+    <h4>Tidrapporterade dagar</h4>
+    @foreach (var day in workDays)
+    {
+        <p><b>@day.Date.ToShortDateString()</b> (Summa: @GetRoundedTotal(day) timmar)</p>
+        <ul>
+            @foreach (var item in day.WorkItems)
+            {
+                <li>@item.ProjectName: @item.Start.ToShortTimeString() - @item.End.ToShortTimeString() (@(item.DurationMinutes / 60):0.##h)</li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private WorkItem newWorkItem = new()
+        {
+            Start = DateTime.Today.AddHours(8),
+            End = DateTime.Today.AddHours(17)
+        };
+
+    private List<WorkDay>? workDays;
+
+    protected override async Task OnInitializedAsync()
+    {
+        workDays = await TimeService.GetWorkDaysAsync();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await TimeService.AddWorkItemAsync(newWorkItem);
+        workDays = await TimeService.GetWorkDaysAsync();
+
+        newWorkItem = new()
+            {
+                Start = DateTime.Today.AddHours(8),
+                End = DateTime.Today.AddHours(17)
+            };
+    }
+
+    private double GetRoundedTotal(WorkDay day)
+    {
+        var totalMinutes = day.WorkItems.Sum(wi => wi.DurationMinutes);
+        return Math.Ceiling(totalMinutes / 30) * 30 / 60;
+    }
+}
