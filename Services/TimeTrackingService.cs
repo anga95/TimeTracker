@@ -6,32 +6,36 @@ namespace TimeTracker.Services;
 
 public class TimeTrackingService : ITimeTrackingService
 {
-    private readonly TimeTrackerContext _context;
+    private readonly IDbContextFactory<TimeTrackerContext> _contextFactory;
 
-    public TimeTrackingService(TimeTrackerContext context)
+    public TimeTrackingService(IDbContextFactory<TimeTrackerContext> contextFactory)
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task AddWorkItemAsync(WorkItem item)
     {
-        var workDay = await _context.WorkDays
+        await using var context = _contextFactory.CreateDbContext();
+
+        var workDay = await context.WorkDays
             .Include(d => d.WorkItems)
             .FirstOrDefaultAsync(d => d.Date.Date == item.Start.Date);
 
         if (workDay == null)
         {
             workDay = new WorkDay { Date = item.Start.Date };
-            _context.WorkDays.Add(workDay);
+            context.WorkDays.Add(workDay);
         }
 
         workDay.WorkItems.Add(item);
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<List<WorkDay>> GetWorkDaysAsync()
     {
-        return await _context.WorkDays
+        await using var context = _contextFactory.CreateDbContext();
+
+        return await context.WorkDays
             .Include(d => d.WorkItems)
             .OrderByDescending(d => d.Date)
             .ToListAsync();
@@ -39,7 +43,9 @@ public class TimeTrackingService : ITimeTrackingService
 
     public async Task<double> GetRoundedDailyTotalAsync(DateTime date)
     {
-        var day = await _context.WorkDays
+        await using var context = _contextFactory.CreateDbContext();
+
+        var day = await context.WorkDays
             .Include(d => d.WorkItems)
             .FirstOrDefaultAsync(d => d.Date.Date == date.Date);
 
@@ -50,4 +56,5 @@ public class TimeTrackingService : ITimeTrackingService
 
         return rounded / 60; // Timmar
     }
+
 }
