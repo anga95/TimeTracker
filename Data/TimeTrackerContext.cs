@@ -10,4 +10,6 @@ public class TimeTrackerContext : DbContext
 
     public DbSet<WorkDay> WorkDays { get; set; }
     public DbSet<WorkItem> WorkItems { get; set; }
+    public DbSet<Project> Projects { get; set; }
+
 }

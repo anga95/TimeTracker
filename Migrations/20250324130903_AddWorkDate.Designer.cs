@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimeTracker.Data;
 
@@ -11,9 +12,11 @@ using TimeTracker.Data;
 namespace TimeTracker.Migrations
 {
     [DbContext(typeof(TimeTrackerContext))]
-    partial class TimeTrackerContextModelSnapshot : ModelSnapshot
+    [Migration("20250324130903_AddWorkDate")]
+    partial class AddWorkDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,23 +24,6 @@ namespace TimeTracker.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("TimeTracker.Models.Project", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Projects");
-                });
 
             modelBuilder.Entity("TimeTracker.Models.WorkDay", b =>
                 {
@@ -69,8 +55,9 @@ namespace TimeTracker.Migrations
                     b.Property<double>("HoursWorked")
                         .HasColumnType("float");
 
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
+                    b.Property<string>("ProjectName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("WorkDate")
                         .HasColumnType("datetime2");
@@ -80,8 +67,6 @@ namespace TimeTracker.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProjectId");
-
                     b.HasIndex("WorkDayId");
 
                     b.ToTable("WorkItems");
@@ -89,22 +74,9 @@ namespace TimeTracker.Migrations
 
             modelBuilder.Entity("TimeTracker.Models.WorkItem", b =>
                 {
-                    b.HasOne("TimeTracker.Models.Project", "Project")
-                        .WithMany("WorkItems")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("TimeTracker.Models.WorkDay", null)
                         .WithMany("WorkItems")
                         .HasForeignKey("WorkDayId");
-
-                    b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("TimeTracker.Models.Project", b =>
-                {
-                    b.Navigation("WorkItems");
                 });
 
             modelBuilder.Entity("TimeTracker.Models.WorkDay", b =>
