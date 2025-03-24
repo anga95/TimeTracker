@@ -1,14 +1,8 @@
-using System;
-
 namespace TimeTracker.Models;
 
-public class WorkItem
+public class WorkDay
 {
     public int Id { get; set; }
-    public string ProjectName { get; set; } = null!;
-    public DateTime Start { get; set; }
-    public DateTime End { get; set; }
-    public string? Comment { get; set; }
-
-    public double DurationMinutes => (End - Start).TotalMinutes;
+    public DateTime Date { get; set; }
+    public List<WorkItem> WorkItems { get; set; } = new();
 }

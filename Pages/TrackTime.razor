@@ -5,13 +5,11 @@
 
 <h3>Tidrapportering</h3>
 
-<!-- Grundläggande formulär för att lägga till WorkItem -->
+<!-- Formulär för att lägga till WorkItem -->
 <EditForm Model="@newWorkItem" OnValidSubmit="@HandleValidSubmit">
     <InputText @bind-Value="newWorkItem.ProjectName" placeholder="Projekt" />
-    <InputDate @bind-Value="newWorkItem.Start" />
-    <InputDate @bind-Value="newWorkItem.End" />
+    <InputNumber @bind-Value="newWorkItem.HoursWorked" placeholder="Arbetade timmar" />
     <InputTextArea @bind-Value="newWorkItem.Comment" placeholder="Kommentar (valfritt)" />
-
     <button type="submit">Lägg till tid</button>
 </EditForm>
 
@@ -24,18 +22,21 @@
         <ul>
             @foreach (var item in day.WorkItems)
             {
-                <li>@item.ProjectName: @item.Start.ToShortTimeString() - @item.End.ToShortTimeString() (@(item.DurationMinutes / 60):0.##h)</li>
+                <li>
+                    @item.ProjectName: @item.HoursWorked h
+                    @if (!string.IsNullOrEmpty(item.Comment))
+                    {
+                        <span> - @item.Comment</span>
+                    }
+                </li>
             }
         </ul>
     }
 }
 
 @code {
-    private WorkItem newWorkItem = new()
-        {
-            Start = DateTime.Today.AddHours(8),
-            End = DateTime.Today.AddHours(17)
-        };
+    // Sätt defaultvärde till 0 timmar, eftersom det nu ska anges manuellt.
+    private WorkItem newWorkItem = new() { HoursWorked = 0 };
 
     private List<WorkDay>? workDays;
 
@@ -49,16 +50,13 @@
         await TimeService.AddWorkItemAsync(newWorkItem);
         workDays = await TimeService.GetWorkDaysAsync();
 
-        newWorkItem = new()
-            {
-                Start = DateTime.Today.AddHours(8),
-                End = DateTime.Today.AddHours(17)
-            };
+        newWorkItem = new() { HoursWorked = 0 };
     }
 
     private double GetRoundedTotal(WorkDay day)
     {
-        var totalMinutes = day.WorkItems.Sum(wi => wi.DurationMinutes);
-        return Math.Ceiling(totalMinutes / 30) * 30 / 60;
+        // Om du vill avrunda till närmaste halvtimme:
+        var total = day.WorkItems.Sum(wi => wi.HoursWorked);
+        return Math.Ceiling(total * 2) / 2;
     }
 }
