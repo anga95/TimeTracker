@@ -61,7 +61,7 @@
 
     private void BeginLogout()
     {
-        // Navigera till logout-sidan och tvinga en full omladdning
-        NavigationManager.NavigateTo("Identity/Account/Logout", forceLoad: true);
+        // Omdirigera användaren till logout-sidan med en returnUrl till index
+        NavigationManager.NavigateTo("Identity/Account/Logout?returnUrl=/", forceLoad: true);
     }
 }
