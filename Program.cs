@@ -1,4 +1,5 @@
 using Azure.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TimeTracker.Data;
 using TimeTracker.Services;
@@ -15,13 +16,31 @@ if (!string.IsNullOrEmpty(keyVaultUrl))
     );
 }
 
-// Add services to the container.
+// L�gg till Razor Pages, Blazor Server, mm.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddSingleton<WeatherForecastService>();
 
-builder.Services.AddDbContextFactory<TimeTrackerContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// L�gg till Identity och konfigurera standardalternativ
+builder.Services.AddDbContext<TimeTrackerContext>(
+    options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")),
+    ServiceLifetime.Scoped,
+    ServiceLifetime.Singleton
+);
+
+builder.Services.AddDbContextFactory<TimeTrackerContext>();
+
+builder.Services.AddDefaultIdentity<IdentityUser>(options =>
+{
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequiredLength = 6;
+    options.SignIn.RequireConfirmedAccount = false;
+})
+.AddEntityFrameworkStores<TimeTrackerContext>();
+
 
 builder.Services.AddHttpClient<IAIService, AIService>();
 builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
@@ -38,10 +57,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
