@@ -1,0 +1,83 @@
+﻿@page "/aisummary"
+@using TimeTracker.Models
+@using TimeTracker.Services
+@inject ITimeTrackingService TimeService
+@inject IAIService AIService
+@inject IJSRuntime JSRuntime
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3 class="card-title">AI-sammanfattning för de senaste 7 dagarna</h3>
+        <button class="btn btn-primary mb-3" @onclick="GenerateAISummary">Generera AI-sammanfattning</button>
+
+        @if (string.IsNullOrWhiteSpace(aiSummary))
+        {
+            <p>Klicka på knappen för att generera en sammanfattning.</p>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                <strong>Sammanfattning:</strong>
+                <p>@aiSummary</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string aiSummary = "";
+
+    private async Task GenerateAISummary()
+    {
+
+        aiSummary = "Not yet implemented";
+
+        // // Hämta alla tidrapporterade dagar
+        // var allDays = await TimeService.GetWorkDaysAsync();
+
+        // // Filtrera ut de dagar som är inom de senaste 7 dagarna
+        // DateTime cutoff = DateTime.Today.AddDays(-7);
+        // var last7Days = allDays.Where(d => d.Date.Date >= cutoff)
+        //                        .OrderBy(d => d.Date)
+        //                        .ToList();
+
+        // if (!last7Days.Any())
+        // {
+        //     aiSummary = "Inga tidrapporter för de senaste 7 dagarna.";
+        //     return;
+        // }
+
+        // // Bygg upp en prompt för AI:n
+        // var promptBuilder = new System.Text.StringBuilder();
+        // promptBuilder.AppendLine("Sammanfatta de senaste 7 dagarnas tidrapporter. Inkludera projektnamn, antal timmar och eventuella kommentarer.");
+        // promptBuilder.AppendLine("Format: Datum, Projekt: <namn>, <antal timmar> timmar. Kommentar: <kommentar> (om angiven).");
+        // promptBuilder.AppendLine();
+
+        // foreach (var day in last7Days)
+        // {
+        //     promptBuilder.AppendLine($"Datum: {day.Date.ToShortDateString()}.");
+        //     // Gruppera WorkItems per projekt
+        //     var groups = day.WorkItems
+        //                     .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
+        //                     .Select(g => new { ProjectName = g.Key, Hours = g.Sum(wi => wi.HoursWorked) });
+        //     foreach (var group in groups)
+        //     {
+        //         promptBuilder.AppendLine($"Projekt: {group.ProjectName}, {group.Hours} timmar.");
+        //     }
+        //     // Lista unika kommentarer om det finns några
+        //     var comments = day.WorkItems.Where(wi => !string.IsNullOrWhiteSpace(wi.Comment))
+        //                                 .Select(wi => wi.Comment)
+        //                                 .Distinct();
+        //     if (comments.Any())
+        //     {
+        //         promptBuilder.AppendLine("Kommentarer: " + string.Join("; ", comments));
+        //     }
+        //     promptBuilder.AppendLine(); // tom rad mellan dagarna
+        // }
+
+        // string prompt = promptBuilder.ToString();
+
+        // // Anropa AI-tjänsten med den skapade prompten
+        // aiSummary = await AIService.GetSummaryAsync(prompt);
+    }
+}

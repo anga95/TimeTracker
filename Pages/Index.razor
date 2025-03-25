@@ -6,106 +6,162 @@
 
 
 
-<!-- SEKTION FÖR ATT SKAPA NYTT PROJEKT -->
 <div class="card mb-4">
-    <div class="card-header">Skapa nytt projekt</div>
     <div class="card-body">
-        <div class="input-group">
-            <InputText @bind-Value="newProjectName" class="form-control" placeholder="Nytt projektnamn" />
-            <button class="btn btn-success" @onclick="AddProject">Skapa projekt</button>
-        </div>
+        <h3 class="card-title">Tidrapportering</h3>
+
+        <!-- Sektion för att skapa nytt projekt -->
+        <button class="btn btn-outline-secondary mb-3" @onclick="OpenProjectModal">
+            Skapa nytt projekt
+        </button>
+        @if (showProjectModal)
+        {
+            <div class="modal fade show" style="display:block;" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Skapa nytt projekt</h5>
+                            <button type="button" class="btn-close" @onclick="CloseProjectModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <InputText @bind-Value="newProjectName" class="form-control" placeholder="Projektnamn" />
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-secondary" @onclick="CloseProjectModal">Avbryt</button>
+                            <button class="btn btn-primary" @onclick="CreateProject">Skapa</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-backdrop fade show"></div>
+        }
+
+        <hr />
+
+        <!-- Formulär för tidrapportering -->
+        <EditForm Model="@newWorkItem" OnValidSubmit="@HandleValidSubmit" class="mb-3">
+            <div class="row g-3 align-items-end">
+                <!-- Projekt (dropdown) -->
+                <div class="col-md-3">
+                    <label class="form-label">Projekt</label>
+                    <select class="form-select" @bind="newWorkItem.ProjectId">
+                        <option value="0">-- Välj projekt --</option>
+                        @if (projects != null)
+                        {
+                            @foreach (var p in projects)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <!-- Datum -->
+                <div class="col-md-3">
+                    <label class="form-label">Datum</label>
+                    <InputDate @bind-Value="newWorkItem.WorkDate" class="form-control" />
+                </div>
+
+                <!-- Timmar -->
+                <div class="col-md-2">
+                    <label class="form-label">Timmar</label>
+                    <InputNumber @bind-Value="newWorkItem.HoursWorked" class="form-control" />
+                </div>
+
+                <!-- Kommentar -->
+                <div class="col-md-4">
+                    <label class="form-label">Kommentar</label>
+                    <InputTextArea @bind-Value="newWorkItem.Comment" class="form-control" rows="1" />
+                </div>
+
+                <!-- Submit-knapp -->
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary">Lägg till tid</button>
+                </div>
+            </div>
+        </EditForm>
     </div>
 </div>
 
-
-<h3>Tidrapportering</h3>
-
-<!-- FORMULÄR FÖR TIDRAPPORTERING -->
-<EditForm Model="@newWorkItem" OnValidSubmit="@HandleValidSubmit" class="mb-3">
-    <div class="row g-3 align-items-end">
-        <!-- Projekt (dropdown) -->
-        <div class="col-md-3">
-            <label class="form-label">Projekt</label>
-            <select class="form-select" @bind="newWorkItem.ProjectId">
-                <option value="0">-- Välj projekt --</option>
-                @if (projects != null)
-                {
-                    @foreach (var p in projects)
-                    {
-                        <option value="@p.Id">@p.Name</option>
-                    }
-                }
-            </select>
-        </div>
-
-        <!-- Datum -->
-        <div class="col-md-3">
-            <label class="form-label">Datum</label>
-            <InputDate @bind-Value="newWorkItem.WorkDate" class="form-control" />
-        </div>
-
-        <!-- Timmar -->
-        <div class="col-md-2">
-            <label class="form-label">Timmar</label>
-            <InputNumber @bind-Value="newWorkItem.HoursWorked" class="form-control" />
-        </div>
-
-        <!-- Kommentar -->
-        <div class="col-md-4">
-            <label class="form-label">Kommentar</label>
-            <InputTextArea @bind-Value="newWorkItem.Comment" class="form-control" rows="1" />
-        </div>
-
-        <!-- Submit-knapp -->
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary">Lägg till tid</button>
-        </div>
-    </div>
-</EditForm>
-
-
+<div class="my-4">
+    <hr />
+</div>
 
 <!-- LISTA AV TIDRAPPORTERADE DAGAR -->
-@if (workDays != null && workDays.Any())
-{
-    @foreach (var day in workDays)
+<div>
+    @if (workDays != null && workDays.Any())
     {
-        <h4>@day.Date.ToShortDateString() (Summa: @GetRoundedTotal(day) h)</h4>
-        <table class="table table-striped table-hover table-bordered">
-            <thead>
-                <tr>
-                    <th>Projekt</th>
-                    <th>Timmar</th>
-                    <th>Kommentar</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in day.WorkItems)
+        @foreach (var day in workDays)
+        {
+            <h4>@day.Date.ToShortDateString() (Summa: @GetRoundedTotal(day) h)</h4>
+
+            <ul>
+                @foreach (var (ProjectName, Hours) in GetProjectSummary(day))
                 {
-                    <tr>
-                        <td>@item.Project?.Name</td>
-                        <td>@item.HoursWorked</td>
-                        <td>@item.Comment</td>
-                        <td>
-                            <button class="btn btn-danger btn-sm" @onclick="() => ConfirmDelete(item.Id)">
-                                Ta bort
-                            </button>
-                        </td>
-                    </tr>
+                    <li><b>@ProjectName</b>: @Hours h</li>
                 }
-            </tbody>
-        </table>
+            </ul>
+
+            <table class="table table-striped table-hover table-bordered">
+                <thead>
+                    <tr>
+                        <th>Projekt</th>
+                        <th>Timmar</th>
+                        <th>Kommentar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in day.WorkItems)
+                    {
+                        <tr>
+                            <td>@item.Project?.Name</td>
+                            <td>@item.HoursWorked</td>
+                            <td>@item.Comment</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" @onclick="() => ConfirmDelete(item.Id)">
+                                    Ta bort
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
     }
-}
-else
-{
-    <p>Inga tidrapporterade dagar ännu.</p>
-}
+    else
+    {
+        <p>Inga tidrapporterade dagar ännu.</p>
+    }
+</div>
 
 @code {
+
+    private bool showProjectModal = false;
+    private string newProjectName = "";
+
+    private void OpenProjectModal()
+    {
+        showProjectModal = true;
+    }
+
+    private void CloseProjectModal()
+    {
+        showProjectModal = false;
+        newProjectName = "";
+    }
+
+    private async Task CreateProject()
+    {
+        if (!string.IsNullOrWhiteSpace(newProjectName))
+        {
+            await TimeService.CreateProjectAsync(newProjectName);
+            projects = await TimeService.GetProjectsAsync();
+            CloseProjectModal();
+        }
+    }
+
     // Nya poster
     private WorkItem newWorkItem = new() { WorkDate = DateTime.Today };
-    private string newProjectName = "";
 
     // Data för UI
     private List<WorkDay>? workDays;
@@ -128,6 +184,13 @@ else
         await TimeService.AddWorkItemAsync(newWorkItem);
         workDays = await TimeService.GetWorkDaysAsync();
         newWorkItem = new() { WorkDate = DateTime.Today };
+    }
+
+    private IEnumerable<(string ProjectName, double Hours)> GetProjectSummary(WorkDay day)
+    {
+        return day.WorkItems
+            .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
+            .Select(g => (ProjectName: g.Key, Hours: g.Sum(wi => wi.HoursWorked)));
     }
 
     private async Task AddProject()
