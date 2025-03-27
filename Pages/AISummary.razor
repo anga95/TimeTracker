@@ -72,14 +72,43 @@
         }
 
         // Bygg en prompt baserat på de hämtade dagarna
+        string prompt = BuildPrompt(last7Days);
+
+        try
+        {
+            ChatResponseResult response = await AIService.GetChatResponseAsync(prompt);
+
+            if (response.IsRateLimited)
+            {
+                warningMessage = response.Summary;
+            }
+            else
+            {
+                aiSummary = response.Summary;
+            }
+        }
+        catch (Exception ex)
+        {
+            warningMessage = "Ett fel inträffade vid anropet till AI-tjänsten.";
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        var (monthlyCalls, maxCalls) = await AIService.GetUsageInfoAsync();
+        await JS.InvokeVoidAsync("console.log", $"AI calls this month: {monthlyCalls}/{maxCalls}");
+    }
+
+    private string BuildPrompt(List<WorkDay> days)
+    {
         var promptBuilder = new System.Text.StringBuilder();
         promptBuilder.AppendLine("Sammanfatta de senaste 7 dagarnas tidrapporter. Inkludera projektnamn, antal timmar och eventuella kommentarer.");
         promptBuilder.AppendLine();
 
-        foreach (var day in last7Days)
+        foreach (var day in days)
         {
             promptBuilder.AppendLine($"Datum: {day.Date.ToShortDateString()}.");
-            // Gruppera WorkItems per projekt
+
+            // Gruppera workitems per projekt
             var groups = day.WorkItems
                             .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
                             .Select(g => new { ProjectName = g.Key, Hours = g.Sum(wi => wi.HoursWorked) });
@@ -87,7 +116,8 @@
             {
                 promptBuilder.AppendLine($"Projekt: {group.ProjectName}, {group.Hours} timmar.");
             }
-            // Lista unika kommentarer om de finns
+
+            // Lista unika kommentarer
             var comments = day.WorkItems
                               .Where(wi => !string.IsNullOrWhiteSpace(wi.Comment))
                               .Select(wi => wi.Comment)
@@ -98,24 +128,6 @@
             }
             promptBuilder.AppendLine(); // tom rad mellan dagarna
         }
-
-        string prompt = promptBuilder.ToString();
-
-        ChatResponseResult response = await AIService.GetChatResponseAsync(prompt);
-
-        if (response.IsRateLimited)
-        {
-            warningMessage = response.Summary;
-        }
-        else
-        {
-            aiSummary = response.Summary;
-            warningMessage = "";
-        }
-
-        await InvokeAsync(StateHasChanged);
-
-        var (monthlyCalls, maxCalls) = await AIService.GetUsageInfoAsync();
-        await JS.InvokeVoidAsync("console.log", $"AI calls this month: {monthlyCalls}/{maxCalls}");
+        return promptBuilder.ToString();
     }
 }
