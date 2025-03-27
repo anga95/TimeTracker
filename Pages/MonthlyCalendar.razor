@@ -30,28 +30,40 @@
         @for (int col = 0; col < 7; col++)
         {
             var day = gridStart.AddDays(row * 7 + col);
-            // Om dagen ligger inom aktuell månad
             bool inThisMonth = (day.Month == currentMonth && day.Year == currentYear);
-            // Kontrollera om det är en vardag (mån–fre)
-            bool isWeekday = (day.DayOfWeek != DayOfWeek.Saturday && day.DayOfWeek != DayOfWeek.Sunday);
-            // Markera dagen med grön bakgrund om det är en vardag och timmarna är exakt 8
-            string backgroundColor = inThisMonth
-            ? ((isWeekday && GetTotalHours(day) >= 8) ? "#e0ffe0" : "white")
-            : "#f8f9fa";
+            string backgroundColor = inThisMonth ? (GetTotalHours(day) >= 8 ? "#e0ffe0" : "white") : "#f8f9fa";
+            var totalHours = GetTotalHours(day);
+            var projectSummary = GetProjectSummary(day).ToList();
 
             <div class="col border p-2"
                  style="height: 120px; cursor: pointer; background-color:@backgroundColor"
                  @onclick="() => OpenDayModal(day)">
-                <strong>@day.Day</strong>
-                <br />
-                <small>
-                    @GetTotalHours(day)h
-                    @(string.IsNullOrEmpty(GetProjectName(day)) ? "" : $", {GetProjectName(day)}")
-                </small>
+                <!-- Datum -->
+                <div>
+                    <strong>@day.Day </strong>
+                </div>
+                <!-- Om det finns data -->
+                @if (totalHours > 0)
+                {
+                    <div>
+                        <strong>@totalHours h</strong>
+                    </div>
+                    <div>
+                        <small>
+                            @foreach (var item in projectSummary)
+                            {
+                                @item.projectName <br />
+                            }
+                        </small>
+                    </div>
+                }
             </div>
         }
     </div>
 }
+
+
+
 
 <!-- Modal för detaljerad vy av en dag -->
 @if (showDayModal)
@@ -125,6 +137,19 @@
 
         await LoadData();
     }
+
+    private IEnumerable<(string projectName, double hours)> GetProjectSummary(DateTime day)
+    {
+        var wd = userWorkDays.FirstOrDefault(d => d.Date.Date == day.Date);
+        if (wd == null)
+        {
+            return Enumerable.Empty<(string, double)>();
+        }
+        return wd.WorkItems
+                 .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
+                 .Select(g => (projectName: g.Key, hours: g.Sum(wi => wi.HoursWorked)));
+    }
+
 
     private async Task LoadData()
     {
