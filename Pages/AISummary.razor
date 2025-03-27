@@ -8,6 +8,8 @@
 @inject IAIService AIService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JS
+@inject ILogger<AISummary> Logger
+
 
 <div class="card mb-4">
     <div class="card-body">
@@ -89,6 +91,7 @@
         }
         catch (Exception ex)
         {
+            Logger.LogError(ex, "Ett fel inträffade vid anropet till AI-tjänsten.");
             warningMessage = "Ett fel inträffade vid anropet till AI-tjänsten.";
         }
 
