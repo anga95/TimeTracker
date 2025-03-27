@@ -1,7 +1,11 @@
-﻿namespace TimeTracker.Services
+﻿using TimeTracker.Models;
+
+namespace TimeTracker.Services
 {
     public interface IAIService
     {
-        Task<string> GetSummaryAsync(string prompt);
+        Task<ChatResponseResult> GetChatResponseAsync(string prompt, bool creative = true);
+        Task<(int monthlyCalls, int maxCalls)> GetUsageInfoAsync();
+
     }
 }

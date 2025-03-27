@@ -7,7 +7,7 @@ using TimeTracker.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // key vault stuff
-var keyVaultUrl = builder.Configuration["KeyVault:Uri"]; // https://timetracker-kv.vault.azure.net/
+var keyVaultUrl = builder.Configuration["KeyVault:Uri"]; // https://openai-anga.openai.azure.com/
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
     builder.Configuration.AddAzureKeyVault(
@@ -23,7 +23,13 @@ builder.Services.AddServerSideBlazor();
 
 // L�gg till Identity och konfigurera standardalternativ
 builder.Services.AddDbContext<TimeTrackerContext>(
-    options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")),
+    options => options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null)
+    ),
     ServiceLifetime.Scoped,
     ServiceLifetime.Singleton
 );
@@ -42,7 +48,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 .AddEntityFrameworkStores<TimeTrackerContext>();
 
 
-builder.Services.AddHttpClient<IAIService, AIService>();
+builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
 
 

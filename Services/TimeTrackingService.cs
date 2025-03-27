@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TimeTracker.Data;
+using TimeTracker.Demo;
 using TimeTracker.Models;
 
 namespace TimeTracker.Services
@@ -38,6 +39,12 @@ namespace TimeTracker.Services
 
         public async Task<List<WorkDay>> GetWorkDaysAsync(string userId)
         {
+            // if no user id is provided, return demo data
+            if (string.IsNullOrEmpty(userId))
+            {
+                return DemoData.GetDemoWorkDays();
+            }
+
             await using var context = _contextFactory.CreateDbContext();
             var allDays = await context.WorkDays
                 .Include(d => d.WorkItems)
@@ -77,6 +84,12 @@ namespace TimeTracker.Services
 
         public async Task<List<Project>> GetProjectsAsync(string userId)
         {
+            // if no user id is provided, return demo data
+            if (string.IsNullOrEmpty(userId))
+            {
+                return DemoData.GetDemoProjects();
+            }
+
             await using var context = _contextFactory.CreateDbContext();
             return await context.Projects
                 .OrderBy(p => p.Name)

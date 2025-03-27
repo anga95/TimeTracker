@@ -1,12 +1,23 @@
 ﻿@page "/aisummary"
+@using TimeTracker.Demo
 @using TimeTracker.Models
 @using TimeTracker.Services
+@using Markdig
+@using Microsoft.AspNetCore.Components.Authorization
 @inject ITimeTrackingService TimeService
 @inject IAIService AIService
-@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JS
 
 <div class="card mb-4">
     <div class="card-body">
+        @if (!string.IsNullOrWhiteSpace(warningMessage))
+        {
+            <div class="alert alert-warning">
+                <strong>Varning:</strong> @warningMessage
+            </div>
+        }
+
         <h3 class="card-title">AI-sammanfattning för de senaste 7 dagarna</h3>
         <button class="btn btn-primary mb-3" @onclick="GenerateAISummary">Generera AI-sammanfattning</button>
 
@@ -18,7 +29,7 @@
         {
             <div class="alert alert-info">
                 <strong>Sammanfattning:</strong>
-                <p>@aiSummary</p>
+                @((MarkupString)Markdown.ToHtml(aiSummary))
             </div>
         }
     </div>
@@ -26,58 +37,85 @@
 
 @code {
     private string aiSummary = "";
+    private string warningMessage = "";
+    private string currentUserId = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+        }
+    }
 
     private async Task GenerateAISummary()
     {
+        // Hämta alla tidrapporterade dagar för aktuell användare
+        var allDays = await TimeService.GetWorkDaysAsync(currentUserId);
 
-        aiSummary = "Not yet implemented";
+        // Filtrera ut de dagar som är inom de senaste 7 dagarna
+        DateTime cutoff = DateTime.Today.AddDays(-7);
+        var last7Days = allDays.Where(d => d.Date.Date >= cutoff)
+                               .OrderBy(d => d.Date)
+                               .ToList();
 
-        // // Hämta alla tidrapporterade dagar
-        // var allDays = await TimeService.GetWorkDaysAsync();
+        if (!last7Days.Any())
+        {
+            await InvokeAsync(() =>
+            {
+                aiSummary = "Inga tidrapporter för de senaste 7 dagarna.";
+                StateHasChanged();
+            });
+            return;
+        }
 
-        // // Filtrera ut de dagar som är inom de senaste 7 dagarna
-        // DateTime cutoff = DateTime.Today.AddDays(-7);
-        // var last7Days = allDays.Where(d => d.Date.Date >= cutoff)
-        //                        .OrderBy(d => d.Date)
-        //                        .ToList();
+        // Bygg en prompt baserat på de hämtade dagarna
+        var promptBuilder = new System.Text.StringBuilder();
+        promptBuilder.AppendLine("Sammanfatta de senaste 7 dagarnas tidrapporter. Inkludera projektnamn, antal timmar och eventuella kommentarer.");
+        promptBuilder.AppendLine();
 
-        // if (!last7Days.Any())
-        // {
-        //     aiSummary = "Inga tidrapporter för de senaste 7 dagarna.";
-        //     return;
-        // }
+        foreach (var day in last7Days)
+        {
+            promptBuilder.AppendLine($"Datum: {day.Date.ToShortDateString()}.");
+            // Gruppera WorkItems per projekt
+            var groups = day.WorkItems
+                            .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
+                            .Select(g => new { ProjectName = g.Key, Hours = g.Sum(wi => wi.HoursWorked) });
+            foreach (var group in groups)
+            {
+                promptBuilder.AppendLine($"Projekt: {group.ProjectName}, {group.Hours} timmar.");
+            }
+            // Lista unika kommentarer om de finns
+            var comments = day.WorkItems
+                              .Where(wi => !string.IsNullOrWhiteSpace(wi.Comment))
+                              .Select(wi => wi.Comment)
+                              .Distinct();
+            if (comments.Any())
+            {
+                promptBuilder.AppendLine("Kommentarer: " + string.Join("; ", comments));
+            }
+            promptBuilder.AppendLine(); // tom rad mellan dagarna
+        }
 
-        // // Bygg upp en prompt för AI:n
-        // var promptBuilder = new System.Text.StringBuilder();
-        // promptBuilder.AppendLine("Sammanfatta de senaste 7 dagarnas tidrapporter. Inkludera projektnamn, antal timmar och eventuella kommentarer.");
-        // promptBuilder.AppendLine("Format: Datum, Projekt: <namn>, <antal timmar> timmar. Kommentar: <kommentar> (om angiven).");
-        // promptBuilder.AppendLine();
+        string prompt = promptBuilder.ToString();
 
-        // foreach (var day in last7Days)
-        // {
-        //     promptBuilder.AppendLine($"Datum: {day.Date.ToShortDateString()}.");
-        //     // Gruppera WorkItems per projekt
-        //     var groups = day.WorkItems
-        //                     .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
-        //                     .Select(g => new { ProjectName = g.Key, Hours = g.Sum(wi => wi.HoursWorked) });
-        //     foreach (var group in groups)
-        //     {
-        //         promptBuilder.AppendLine($"Projekt: {group.ProjectName}, {group.Hours} timmar.");
-        //     }
-        //     // Lista unika kommentarer om det finns några
-        //     var comments = day.WorkItems.Where(wi => !string.IsNullOrWhiteSpace(wi.Comment))
-        //                                 .Select(wi => wi.Comment)
-        //                                 .Distinct();
-        //     if (comments.Any())
-        //     {
-        //         promptBuilder.AppendLine("Kommentarer: " + string.Join("; ", comments));
-        //     }
-        //     promptBuilder.AppendLine(); // tom rad mellan dagarna
-        // }
+        ChatResponseResult response = await AIService.GetChatResponseAsync(prompt);
 
-        // string prompt = promptBuilder.ToString();
+        if (response.IsRateLimited)
+        {
+            warningMessage = response.Summary;
+        }
+        else
+        {
+            aiSummary = response.Summary;
+            warningMessage = "";
+        }
 
-        // // Anropa AI-tjänsten med den skapade prompten
-        // aiSummary = await AIService.GetSummaryAsync(prompt);
+        await InvokeAsync(StateHasChanged);
+
+        var (monthlyCalls, maxCalls) = await AIService.GetUsageInfoAsync();
+        await JS.InvokeVoidAsync("console.log", $"AI calls this month: {monthlyCalls}/{maxCalls}");
     }
 }
