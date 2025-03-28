@@ -21,7 +21,17 @@
         }
 
         <h3 class="card-title">AI-sammanfattning för de senaste 7 dagarna</h3>
-        <button class="btn btn-primary mb-3" @onclick="GenerateAISummary">Generera AI-sammanfattning</button>
+        <button class="btn btn-primary mb-3" @onclick="GenerateAISummary" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <text>Genererar…</text>
+            }
+            else
+            {
+                <text>Generera AI-sammanfattning</text>
+            }
+        </button>
 
         @if (string.IsNullOrWhiteSpace(aiSummary))
         {
@@ -42,6 +52,9 @@
     private string warningMessage = "";
     private string currentUserId = "";
 
+    private bool isLoading = false;
+
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -54,6 +67,9 @@
 
     private async Task GenerateAISummary()
     {
+        isLoading = true;
+        StateHasChanged();
+
         // Hämta alla tidrapporterade dagar för aktuell användare
         var allDays = await TimeService.GetWorkDaysAsync(currentUserId);
 
@@ -95,6 +111,7 @@
             warningMessage = "Ett fel inträffade vid anropet till AI-tjänsten.";
         }
 
+        isLoading = false;
         await InvokeAsync(StateHasChanged);
 
         var (monthlyCalls, maxCalls) = await AIService.GetUsageInfoAsync();
