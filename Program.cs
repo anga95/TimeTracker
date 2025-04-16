@@ -8,7 +8,7 @@ using TimeTracker.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // key vault stuff
-var keyVaultUrl = builder.Configuration["KeyVault:Uri"]; // https://openai-anga.openai.azure.com/
+var keyVaultUrl = builder.Configuration["KeyVault:Uri"];
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
     builder.Configuration.AddAzureKeyVault(
