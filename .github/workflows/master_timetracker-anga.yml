@@ -65,4 +65,17 @@ jobs:
           app-name: 'timetracker-anga'
           slot-name: 'staging'
           package: .
-          
+      
+      - name: Notify Microsoft Teams
+        if: success()
+        run: |
+          curl -H 'Content-Type: application/json' \
+               -d '{
+                     "@type": "MessageCard",
+                     "@context": "http://schema.org/extensions",
+                     "summary": "Deploy notifiering",
+                     "themeColor": "0076D7",
+                     "title": "✅ Deploy klar till Azure Staging",
+                     "text": "En ny version av TimeTracker har just pushats till staging-slotten. Dags att testa! 🎉"
+                   }' \
+               ${{ secrets.TEAMS_WEBHOOK_URL }}
