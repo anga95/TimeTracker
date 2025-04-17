@@ -97,6 +97,9 @@
             await InvokeAsync(() =>
             {
                 aiSummary = "Inga tidrapporter för de senaste 7 dagarna.";
+                SummaryStateService.SetAISummary(aiSummary);
+                AIService.SaveOrUpdateSummaryAsync(currentUserId, aiSummary);
+                isLoading = false;
                 StateHasChanged();
             });
             return;
@@ -116,6 +119,8 @@
             else
             {
                 aiSummary = response.Summary;
+                SummaryStateService.SetAISummary(aiSummary);
+                await AIService.SaveOrUpdateSummaryAsync(currentUserId, aiSummary);
             }
         }
         catch (Exception ex)
