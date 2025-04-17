@@ -4,7 +4,11 @@
     <Authorized>
         <div class="nav-item px-3">
             <span class="nav-link">
-                Hej, @context.User.Identity.Name
+                Hej,
+                @if (context.User.Identity != null)
+                {
+                    @context.User.Identity.Name
+                }
             </span>
         </div>
         <div class="nav-item px-3">

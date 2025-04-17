@@ -39,9 +39,15 @@ namespace TimeTracker.Services
             IDbContextFactory<TimeTrackerContext> dbContextFactory,
             IHttpContextAccessor httpContextAccessor)
         {
-            string endpoint = configuration["OpenAI:Endpoint"];     // t.ex. "https://openai-anga.openai.azure.com/"
-            string apiKey = configuration["OpenAI:ApiKey"];
-            _deploymentName = configuration["OpenAI:DeploymentName"]; // t.ex. "gpt-4o"
+            string endpoint = configuration["OpenAI:Endpoint"]
+                              ?? throw new InvalidOperationException("OpenAI:Endpoint saknas i konfigurationen.");
+
+            string apiKey = configuration["OpenAI:ApiKey"]
+                            ?? throw new InvalidOperationException("OpenAI:ApiKey saknas i konfigurationen.");
+
+            _deploymentName = configuration["OpenAI:DeploymentName"]
+                              ?? throw new InvalidOperationException("OpenAI:DeploymentName saknas i konfigurationen."); // t.ex. "gpt-4o"
+            
 
             var options = new AzureOpenAIClientOptions();
             _client = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey), options);

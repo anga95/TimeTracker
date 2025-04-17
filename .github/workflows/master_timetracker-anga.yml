@@ -68,14 +68,30 @@ jobs:
       
       - name: Notify Microsoft Teams
         if: success()
+        shell: pwsh
         run: |
-          curl -H 'Content-Type: application/json' \
-               -d '{
-                     "@type": "MessageCard",
-                     "@context": "http://schema.org/extensions",
-                     "summary": "Deploy notifiering",
-                     "themeColor": "0076D7",
-                     "title": "✅ Deploy klar till Azure Staging",
-                     "text": "En ny version av TimeTracker har just pushats till staging-slotten. Dags att testa! 🎉"
-                   }' \
-               ${{ secrets.TEAMS_WEBHOOK_URL }}
+          $payload = @{
+            "@type" = "MessageCard"
+            "@context" = "http://schema.org/extensions"
+            summary = "Deploy notifiering"
+            themeColor = "0076D7"
+            title = "✅ Deploy klar till Azure Staging"
+            text = "En ny version av TimeTracker har just pushats till staging-slotten. Dags att testa! 🎉"
+          } | ConvertTo-Json -Depth 10
+
+          Invoke-RestMethod -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}" -Method Post -ContentType "application/json" -Body $payload
+
+      - name: Notify Microsoft Teams on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          $payload = @{
+            "@type" = "MessageCard"
+            "@context" = "http://schema.org/extensions"
+            summary = "Deploy notifiering"
+            themeColor = "FF0000"
+            title = "❌ Deploy misslyckades"
+            text = "TimeTracker deploy till staging-slotten misslyckades. Kolla GitHub Actions-loggen för mer info. 🚨"
+          } | ConvertTo-Json -Depth 10
+
+          Invoke-RestMethod -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}" -Method Post -ContentType "application/json" -Body $payload

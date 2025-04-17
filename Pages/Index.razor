@@ -1,6 +1,6 @@
 ﻿@page "/tracktime"
 @page "/"
-@using TimeTracker.Demo
+@using System.Security.Claims
 @using TimeTracker.Models
 @using TimeTracker.Services
 @inject ITimeTrackingService TimeService
@@ -13,7 +13,7 @@
         <button class="btn btn-outline-secondary mb-3" @onclick="OpenProjectModal">
             Skapa nytt projekt
         </button>
-        @if (showProjectModal)
+        @if (_showProjectModal)
         {
             <div class="modal fade show" style="display:block;" tabindex="-1">
                 <div class="modal-dialog">
@@ -23,7 +23,7 @@
                             <button type="button" class="btn-close" @onclick="CloseProjectModal"></button>
                         </div>
                         <div class="modal-body">
-                            <InputText @bind-Value="newProjectName" class="form-control" placeholder="Projektnamn" />
+                            <InputText @bind-Value="_newProjectName" class="form-control" placeholder="Projektnamn" />
                         </div>
                         <div class="modal-footer">
                             <button class="btn btn-secondary" @onclick="CloseProjectModal">Avbryt</button>
@@ -38,17 +38,17 @@
         <hr />
 
         <!-- Formulär för tidrapportering -->
-        <EditForm Model="@newWorkItem" OnValidSubmit="@HandleValidSubmit" class="mb-3">
-            <fieldset disabled="@string.IsNullOrEmpty(currentUserId)">
+        <EditForm Model="@_newWorkItem" OnValidSubmit="@HandleValidSubmit" class="mb-3">
+            <fieldset disabled="@string.IsNullOrEmpty(_currentUserId)">
             <div class="row g-3 align-items-end">
                 <!-- Projekt (dropdown) -->
                 <div class="col-md-3">
                     <label class="form-label">Projekt</label>
-                    <select class="form-select" @bind="newWorkItem.ProjectId">
+                    <select class="form-select" @bind="_newWorkItem.ProjectId">
                         <option value="0">-- Välj projekt --</option>
-                        @if (projects != null)
+                        @if (_projects != null)
                         {
-                            @foreach (var p in projects)
+                            @foreach (var p in _projects)
                             {
                                 <option value="@p.Id">@p.Name</option>
                             }
@@ -59,19 +59,19 @@
                 <!-- Datum -->
                 <div class="col-md-3">
                     <label class="form-label">Datum</label>
-                    <InputDate @bind-Value="newWorkItem.WorkDate" class="form-control" />
+                    <InputDate @bind-Value="_newWorkItem.WorkDate" class="form-control" />
                 </div>
 
                 <!-- Timmar -->
                 <div class="col-md-2">
                     <label class="form-label">Timmar</label>
-                    <InputNumber @bind-Value="newWorkItem.HoursWorked" class="form-control" />
+                    <InputNumber @bind-Value="_newWorkItem.HoursWorked" class="form-control" />
                 </div>
 
                 <!-- Kommentar -->
                 <div class="col-md-4">
                     <label class="form-label">Kommentar</label>
-                    <InputTextArea @bind-Value="newWorkItem.Comment" class="form-control" rows="1" />
+                    <InputTextArea @bind-Value="_newWorkItem.Comment" class="form-control" rows="1" />
                 </div>
 
                 <!-- Submit-knapp -->
@@ -80,7 +80,7 @@
                 </div>
             </div>
             </fieldset>
-            @if (string.IsNullOrEmpty(currentUserId))
+            @if (string.IsNullOrEmpty(_currentUserId))
             {
                 <div class="alert alert-warning mt-3">
                     För att spara din tidrapportering måste du vara inloggad.
@@ -96,15 +96,15 @@
 
 <!-- Lista av tidrapporterade dagar -->
 <div>
-    @if (workDays != null && workDays.Any())
+    @if (_workDays != null && _workDays.Any())
     {
-        @foreach (var day in workDays)
+        @foreach (var day in _workDays)
         {
             <h4>@day.Date.ToShortDateString() (Summa: @GetRoundedTotal(day) h)</h4>
             <ul>
-                @foreach (var (ProjectName, Hours) in GetProjectSummary(day))
+                @foreach (var (projectName, hours) in GetProjectSummary(day))
                 {
-                    <li><b>@ProjectName</b>: @Hours h</li>
+                    <li><b>@projectName</b>: @hours h</li>
                 }
             </ul>
             <table class="table table-striped table-hover table-bordered">
@@ -141,15 +141,15 @@
 </div>
 
 @code {
-    private bool showProjectModal = false;
-    private string newProjectName = "";
-    private string currentUserId = "";
+    private bool _showProjectModal = false;
+    private string _newProjectName = "";
+    private string _currentUserId = "";
 
-    private WorkItem newWorkItem = new() { WorkDate = DateTime.Today };
-    private List<WorkDay>? workDays;
-    private List<Project>? projects;
+    private WorkItem _newWorkItem = new() { WorkDate = DateTime.Today };
+    private List<WorkDay>? _workDays;
+    private List<Project>? _projects;
 
-    private List<Project> demoProjects = new()
+    private List<Project> _demoProjects = new()
     {
         new Project { Id = 1, Name = "Demo Projekt 1" },
         new Project { Id = 2, Name = "Demo Projekt 2" }
@@ -159,42 +159,42 @@
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId != null) _currentUserId = userId;
 
-        projects = await TimeService.GetProjectsAsync(currentUserId);
-        workDays = await TimeService.GetWorkDaysAsync(currentUserId);
+        _projects = await TimeService.GetProjectsAsync(_currentUserId);
+        _workDays = await TimeService.GetWorkDaysAsync(_currentUserId);
         
     }
 
-    private void OpenProjectModal() => showProjectModal = true;
+    private void OpenProjectModal() => _showProjectModal = true;
 
     private void CloseProjectModal()
     {
-        showProjectModal = false;
-        newProjectName = "";
+        _showProjectModal = false;
+        _newProjectName = "";
     }
 
     private async Task CreateProject()
     {
-        if (!string.IsNullOrWhiteSpace(newProjectName))
+        if (!string.IsNullOrWhiteSpace(_newProjectName))
         {
-            await TimeService.CreateProjectAsync(newProjectName, currentUserId);
-            projects = await TimeService.GetProjectsAsync(currentUserId);
+            await TimeService.CreateProjectAsync(_newProjectName, _currentUserId);
+            _projects = await TimeService.GetProjectsAsync(_currentUserId);
             CloseProjectModal();
         }
     }
 
     private async Task HandleValidSubmit()
     {
-        if (newWorkItem.ProjectId == 0)
+        if (_newWorkItem.ProjectId == 0)
         {
-            // Hantera fel om inget projekt är valt
             return;
         }
 
-        await TimeService.AddWorkItemAsync(newWorkItem, currentUserId);
-        workDays = await TimeService.GetWorkDaysAsync(currentUserId);
-        newWorkItem = new() { WorkDate = DateTime.Today };
+        await TimeService.AddWorkItemAsync(_newWorkItem, _currentUserId);
+        _workDays = await TimeService.GetWorkDaysAsync(_currentUserId);
+        _newWorkItem = new() { WorkDate = DateTime.Today };
     }
 
     private IEnumerable<(string ProjectName, double Hours)> GetProjectSummary(WorkDay day)
@@ -220,7 +220,7 @@
         if (confirmed)
         {
             await TimeService.DeleteWorkItemAsync(workItemId);
-            workDays = await TimeService.GetWorkDaysAsync(currentUserId);
+            _workDays = await TimeService.GetWorkDaysAsync(_currentUserId);
         }
     }
 }

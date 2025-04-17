@@ -6,7 +6,9 @@ using TimeTracker.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// key vault stuff
+#region Configuration & Key Vault
+
+// Lägg till Azure Key Vault om en URI är specificerad i konfigurationen
 var keyVaultUrl = builder.Configuration["KeyVault:Uri"];
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
@@ -16,25 +18,37 @@ if (!string.IsNullOrEmpty(keyVaultUrl))
     );
 }
 
-// L�gg till Razor Pages, Blazor Server, mm.
+#endregion
+
+#region Add core framework services
+
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
+#endregion
 
-// L�gg till Identity och konfigurera standardalternativ
+#region Entity Framework Core & SQL Server
+
+// Registrera DbContext med retry-logik för transient-fel
 builder.Services.AddDbContext<TimeTrackerContext>(
     options => options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlOptions => sqlOptions.EnableRetryOnFailure(
             maxRetryCount: 5,
             maxRetryDelay: TimeSpan.FromSeconds(10),
-            errorNumbersToAdd: null)
+            errorNumbersToAdd: null
+        )
     ),
     ServiceLifetime.Scoped,
     ServiceLifetime.Singleton
 );
 
+// Lägg till fabriken separat för ex. Azure Functions eller DI
 builder.Services.AddDbContextFactory<TimeTrackerContext>();
+
+#endregion
+
+#region Identity & autentisering
 
 builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 {
@@ -47,22 +61,30 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 })
 .AddEntityFrameworkStores<TimeTrackerContext>();
 
-builder.Services.AddScoped<AiSummaryStateService>();
-builder.Services.AddScoped<IAiService, AiService>();
-builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
-builder.Services.AddScoped<IAiService, AiService>();
+#endregion
 
+#region Applikationstjänster
+
+builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<AiSummaryStateService>();
+builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
+
+#endregion
+
+#region Logging & Telemetry
 
 builder.Logging.AddAzureWebAppDiagnostics();
 builder.Services.AddApplicationInsightsTelemetry();
 
+#endregion
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+#region Middleware-pipeline
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -76,5 +98,7 @@ app.UseAuthorization();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+
+#endregion
 
 app.Run();
