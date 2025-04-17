@@ -2,9 +2,9 @@
 
 namespace TimeTracker.Services
 {
-    public interface IAIService
+    public interface IAiService
     {
-        Task<ChatResponseResult> GetChatResponseAsync(string prompt, bool creative = true);
+        Task<ChatResponseResult> GetChatResponseAsync(string prompt);
         Task<(int monthlyCalls, int maxCalls)> GetUsageInfoAsync();
         Task<string?> GetCachedSummaryAsync(string userId);
         Task SaveOrUpdateSummaryAsync(string userId, string summary);

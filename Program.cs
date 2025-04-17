@@ -47,10 +47,10 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 })
 .AddEntityFrameworkStores<TimeTrackerContext>();
 
-builder.Services.AddScoped<AISummaryStateService>();
-builder.Services.AddScoped<IAIService, AIService>();
+builder.Services.AddScoped<AiSummaryStateService>();
+builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
-builder.Services.AddScoped<IAIService, AIService>();
+builder.Services.AddScoped<IAiService, AiService>();
 
 
 builder.Logging.AddAzureWebAppDiagnostics();

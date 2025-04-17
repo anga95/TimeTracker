@@ -5,25 +5,25 @@
 @using TimeTracker.Models
 @using TimeTracker.Services
 @inject ITimeTrackingService TimeService
-@inject IAIService AIService
+@inject IAiService AiService
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject IJSRuntime JS
+@inject IJSRuntime Js
 @inject ILogger<AISummary> Logger
-@inject AISummaryStateService SummaryStateService
+@inject AiSummaryStateService SummaryStateService
 
 
 <div class="card mb-4">
     <div class="card-body">
-        @if (!string.IsNullOrWhiteSpace(warningMessage))
+        @if (!string.IsNullOrWhiteSpace(_warningMessage))
         {
             <div class="alert alert-warning">
-                <strong>Varning:</strong> @warningMessage
+                <strong>Varning:</strong> @_warningMessage
             </div>
         }
 
         <h3 class="card-title">AI-sammanfattning för de senaste 7 dagarna</h3>
-        <button class="btn btn-primary mb-3" @onclick="GenerateAISummary" disabled="@isLoading">
-            @if (isLoading)
+        <button class="btn btn-primary mb-3" @onclick="GenerateAiSummary" disabled="@_isLoading">
+            @if (_isLoading)
             {
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 <text>Genererar…</text>
@@ -34,26 +34,25 @@
             }
         </button>
 
-        @if (string.IsNullOrWhiteSpace(aiSummary))
+        @if (string.IsNullOrWhiteSpace(_aiSummary))
         {
             <p>Klicka på knappen för att generera en sammanfattning.</p>
         }
         else
         {
             <div class="alert alert-info">
-                <strong>Sammanfattning:</strong>
-                @((MarkupString)Markdown.ToHtml(aiSummary))
+                @((MarkupString)Markdown.ToHtml(_aiSummary))
             </div>
         }
     </div>
 </div>
 
 @code {
-    private string aiSummary = "";
-    private string warningMessage = "";
-    private string currentUserId = "";
+    private string _aiSummary = "";
+    private string _warningMessage = "";
+    private string _currentUserId = "";
 
-    private bool isLoading = false;
+    private bool _isLoading = false;
 
 
     protected override async Task OnInitializedAsync()
@@ -62,29 +61,29 @@
         var user = authState.User;
         if (user.Identity?.IsAuthenticated ?? false)
         {
-            currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+            _currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
             
-            if (string.IsNullOrWhiteSpace(SummaryStateService.AISummary))
+            if (string.IsNullOrWhiteSpace(SummaryStateService.AiSummary))
             {
                 // Om inget finns i state, hämta från databas
-                aiSummary = await AIService.GetCachedSummaryAsync(currentUserId) ?? "";
-                SummaryStateService.SetAISummary(aiSummary);
+                _aiSummary = await AiService.GetCachedSummaryAsync(_currentUserId) ?? "";
+                SummaryStateService.SetAiSummary(_aiSummary);
             }
             else
             {
                 // Annars använd state
-                aiSummary = SummaryStateService.AISummary;
+                _aiSummary = SummaryStateService.AiSummary;
             }
         }
     }
 
-    private async Task GenerateAISummary()
+    private async Task GenerateAiSummary()
     {
-        isLoading = true;
+        _isLoading = true;
         StateHasChanged();
 
         // Hämta alla tidrapporterade dagar för aktuell användare
-        var allDays = await TimeService.GetWorkDaysAsync(currentUserId);
+        var allDays = await TimeService.GetWorkDaysAsync(_currentUserId);
 
         // Filtrera ut de dagar som är inom de senaste 7 dagarna
         DateTime cutoff = DateTime.Today.AddDays(-7);
@@ -96,10 +95,10 @@
         {
             await InvokeAsync(() =>
             {
-                aiSummary = "Inga tidrapporter för de senaste 7 dagarna.";
-                SummaryStateService.SetAISummary(aiSummary);
-                AIService.SaveOrUpdateSummaryAsync(currentUserId, aiSummary);
-                isLoading = false;
+                _aiSummary = "Inga tidrapporter för de senaste 7 dagarna.";
+                SummaryStateService.SetAiSummary(_aiSummary);
+                AiService.SaveOrUpdateSummaryAsync(_currentUserId, _aiSummary);
+                _isLoading = false;
                 StateHasChanged();
             });
             return;
@@ -110,30 +109,30 @@
 
         try
         {
-            ChatResponseResult response = await AIService.GetChatResponseAsync(prompt);
+            ChatResponseResult response = await AiService.GetChatResponseAsync(prompt);
 
             if (response.IsRateLimited)
             {
-                warningMessage = response.Summary;
+                _warningMessage = response.Summary;
             }
             else
             {
-                aiSummary = response.Summary;
-                SummaryStateService.SetAISummary(aiSummary);
-                await AIService.SaveOrUpdateSummaryAsync(currentUserId, aiSummary);
+                _aiSummary = response.Summary;
+                SummaryStateService.SetAiSummary(_aiSummary);
+                await AiService.SaveOrUpdateSummaryAsync(_currentUserId, _aiSummary);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Ett fel inträffade vid anropet till AI-tjänsten.");
-            warningMessage = "Ett fel inträffade vid anropet till AI-tjänsten.";
+            _warningMessage = "Ett fel inträffade vid anropet till AI-tjänsten.";
         }
 
-        isLoading = false;
+        _isLoading = false;
         await InvokeAsync(StateHasChanged);
 
-        var (monthlyCalls, maxCalls) = await AIService.GetUsageInfoAsync();
-        await JS.InvokeVoidAsync("console.log", $"AI calls this month: {monthlyCalls}/{maxCalls}");
+        var (monthlyCalls, maxCalls) = await AiService.GetUsageInfoAsync();
+        await Js.InvokeVoidAsync("console.log", $"AI calls this month: {monthlyCalls}/{maxCalls}");
     }
 
     private string BuildPrompt(List<WorkDay> days)
@@ -144,27 +143,31 @@
 
         foreach (var day in days)
         {
-            promptBuilder.AppendLine($"Datum: {day.Date.ToShortDateString()}.");
+            promptBuilder.AppendLine($"Datum: {day.Date:yyyy-MM-dd}");
 
-            // Gruppera workitems per projekt
-            var groups = day.WorkItems
-                            .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
-                            .Select(g => new { ProjectName = g.Key, Hours = g.Sum(wi => wi.HoursWorked) });
-            foreach (var group in groups)
+            var projectGroups = day.WorkItems
+                .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt");
+
+            foreach (var group in projectGroups)
             {
-                promptBuilder.AppendLine($"Projekt: {group.ProjectName}, {group.Hours} timmar.");
+                var projectName = group.Key;
+                var totalHours = group.Sum(wi => wi.HoursWorked);
+                var comments = group
+                    .Where(wi => !string.IsNullOrWhiteSpace(wi.Comment))
+                    .Select(wi => wi.Comment!.Trim())
+                    .Distinct()
+                    .ToList();
+
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine($"Projekt: {projectName}");
+                promptBuilder.AppendLine($"Tid: {totalHours} timmar");
+                if (comments.Any())
+                {
+                    promptBuilder.AppendLine("Kommentarer: " + string.Join("; ", comments));
+                }
             }
 
-            // Lista unika kommentarer
-            var comments = day.WorkItems
-                              .Where(wi => !string.IsNullOrWhiteSpace(wi.Comment))
-                              .Select(wi => wi.Comment)
-                              .Distinct();
-            if (comments.Any())
-            {
-                promptBuilder.AppendLine("Kommentarer: " + string.Join("; ", comments));
-            }
-            promptBuilder.AppendLine(); // tom rad mellan dagarna
+            promptBuilder.AppendLine(); // tom rad mellan dagar
         }
         return promptBuilder.ToString();
     }

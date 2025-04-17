@@ -8,7 +8,7 @@ using TimeTracker.Models;
 
 namespace TimeTracker.Services
 {
-    public class AIService : IAIService
+    public class AiService : IAiService
     {
         private readonly AzureOpenAIClient _client;
         private readonly string _deploymentName;
@@ -23,17 +23,19 @@ namespace TimeTracker.Services
         private static DateTime _lastCallTime = DateTime.MinValue;
 
         // Två systemmeddelanden, som du kan växla mellan
-        private const string SummarySystemMessage =
-            @"Du är en hjälpsam assistent som skapar tydliga och koncisa summeringar av tidrapportering. 
-              Dela upp summeringen per projekt, skriv total arbetad tid med fetstil, lista aktiviteter som punktlista 
-              och avsluta med en rad: 'Totalt arbetade timmar: XX'. Svara på svenska.";
+        private const string SummarySystemMessage = @"
+            Du är en professionell assistent som hjälper användaren att svara sin chef på frågan: 'Vad har du gjort under veckan?'.
 
-        private const string CreativeSystemMessage =
-            @"Du är en kreativ assistent som skriver lättsamma men tydliga summeringar av tidrapportering. 
-              Dela upp summeringen per projekt, skriv antal timmar med fetstil och lista höjdpunkter som punktlista.
-              Avsluta med en rolig kommentar eller metafor. Svara på svenska.";
+            För varje dag:
+            - Skriv ett stycke i första person (jag-form), där användaren berättar vad hen har gjort.
+            - Inkludera projektnamn, antal timmar, och relevanta kommentarer.
+            - Summera gärna dagens totala tid sist i varje stycke.
+            - Använd en vänlig och tydlig ton, på svenska.
 
-        public AIService(IConfiguration configuration,
+            Använd gärna punktlista om det blir tydligare, men skriv som till en kollega/chef.
+            ";
+
+        public AiService(IConfiguration configuration,
             IDbContextFactory<TimeTrackerContext> dbContextFactory,
             IHttpContextAccessor httpContextAccessor)
         {
@@ -52,7 +54,7 @@ namespace TimeTracker.Services
             _minSecondsBetweenCalls = int.Parse(configuration["AIUsage:MinSecondsBetweenCalls"] ?? "10");
         }
 
-        public async Task<ChatResponseResult> GetChatResponseAsync(string prompt, bool creative = true)
+        public async Task<ChatResponseResult> GetChatResponseAsync(string prompt)
         {
             var result = new ChatResponseResult();
 
@@ -72,10 +74,9 @@ namespace TimeTracker.Services
 
             _lastCallTime = DateTime.UtcNow;
 
-            var systemMessage = creative ? CreativeSystemMessage : SummarySystemMessage;
             var messages = new ChatMessage[]
             {
-                new SystemChatMessage(systemMessage),
+                new SystemChatMessage(SummarySystemMessage),
                 new UserChatMessage(prompt)
             };
 
@@ -85,7 +86,14 @@ namespace TimeTracker.Services
             await LogAiCallAsync(prompt);
 
             result.IsRateLimited = false;
-            result.Summary = $"{completion.Role}: {completion.Content[0].Text}";
+            var raw = completion.Content[0].Text?.Trim() ?? "";
+
+            if (raw.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase))
+            {
+                raw = raw.Substring("Assistant:".Length).Trim();
+            }
+
+            result.Summary = raw;
             return result;
         }
         private bool IsRateLimited()

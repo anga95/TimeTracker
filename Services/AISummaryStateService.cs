@@ -1,9 +1,9 @@
 ﻿namespace TimeTracker.Services
 {
-    public class AISummaryStateService
+    public class AiSummaryStateService
     {
         private string _aiSummary = string.Empty;
-        public string AISummary
+        public string AiSummary
         {
             get => _aiSummary;
             private set
@@ -17,14 +17,14 @@
 
         private void NotifyStateChanged() => OnChange?.Invoke();
 
-        public void SetAISummary(string summary)
+        public void SetAiSummary(string summary)
         {
-            AISummary = summary;
+            AiSummary = summary;
         }
 
-        public void ClearAISummary()
+        public void ClearAiSummary()
         {
-            AISummary = string.Empty;
+            AiSummary = string.Empty;
         }
     }
 }
