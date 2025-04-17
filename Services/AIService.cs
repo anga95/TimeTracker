@@ -1,4 +1,5 @@
-﻿using Azure;
+﻿using System.Security.Claims;
+using Azure;
 using Azure.AI.OpenAI;
 using Microsoft.EntityFrameworkCore;
 using OpenAI.Chat;
@@ -103,7 +104,7 @@ namespace TimeTracker.Services
 
         private async Task LogAiCallAsync(string prompt)
         {
-            string? userId = _httpContextAccessor.HttpContext?.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            string? userId = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             await using var db = _dbContextFactory.CreateDbContext();
             db.AiUsageLogs.Add(new AiUsageLog
             {
@@ -120,6 +121,47 @@ namespace TimeTracker.Services
             var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
             int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
             return (monthlyCalls, _maxCallsPerMonth);
+        }
+        
+        public async Task<string?> GetCachedSummaryAsync(string userId)
+        {
+            await using var db = _dbContextFactory.CreateDbContext();
+            var entry = await db.AISummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+            return entry?.Summary;
+        }
+
+        public async Task SaveOrUpdateSummaryAsync(string userId, string summary)
+        {
+            await using var db = _dbContextFactory.CreateDbContext();
+            var entry = await db.AISummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (entry is null)
+            {
+                entry = new AISummary
+                {
+                    UserId = userId,
+                    Summary = summary,
+                    LastUpdated = DateTime.UtcNow
+                };
+                db.AISummaries.Add(entry);
+            }
+            else
+            {
+                entry.Summary = summary;
+                entry.LastUpdated = DateTime.UtcNow;
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        public async Task ClearCachedSummaryAsync(string userId)
+        {
+            await using var db = _dbContextFactory.CreateDbContext();
+            var entry = await db.AISummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (entry is not null)
+            {
+                db.AISummaries.Remove(entry);
+                await db.SaveChangesAsync();
+            }
         }
     }
 }

@@ -13,4 +13,6 @@ public class TimeTrackerContext : IdentityDbContext
     public DbSet<WorkItem> WorkItems { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<AiUsageLog> AiUsageLogs { get; set; }
+    
+    public DbSet<AISummary> AISummaries { get; set; }
 }

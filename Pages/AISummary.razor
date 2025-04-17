@@ -1,14 +1,15 @@
 ﻿@page "/aisummary"
-@using TimeTracker.Demo
+@using System.Security.Claims
+@using System.Text
+@using Markdig
 @using TimeTracker.Models
 @using TimeTracker.Services
-@using Markdig
-@using Microsoft.AspNetCore.Components.Authorization
 @inject ITimeTrackingService TimeService
 @inject IAIService AIService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JS
 @inject ILogger<AISummary> Logger
+@inject AISummaryStateService SummaryStateService
 
 
 <div class="card mb-4">
@@ -61,7 +62,19 @@
         var user = authState.User;
         if (user.Identity?.IsAuthenticated ?? false)
         {
-            currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+            currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+            
+            if (string.IsNullOrWhiteSpace(SummaryStateService.AISummary))
+            {
+                // Om inget finns i state, hämta från databas
+                aiSummary = await AIService.GetCachedSummaryAsync(currentUserId) ?? "";
+                SummaryStateService.SetAISummary(aiSummary);
+            }
+            else
+            {
+                // Annars använd state
+                aiSummary = SummaryStateService.AISummary;
+            }
         }
     }
 
@@ -120,7 +133,7 @@
 
     private string BuildPrompt(List<WorkDay> days)
     {
-        var promptBuilder = new System.Text.StringBuilder();
+        var promptBuilder = new StringBuilder();
         promptBuilder.AppendLine("Sammanfatta de senaste 7 dagarnas tidrapporter. Inkludera projektnamn, antal timmar och eventuella kommentarer.");
         promptBuilder.AppendLine();
 

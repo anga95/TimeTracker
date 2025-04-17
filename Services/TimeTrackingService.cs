@@ -8,10 +8,17 @@ namespace TimeTracker.Services
     public class TimeTrackingService : ITimeTrackingService
     {
         private readonly IDbContextFactory<TimeTrackerContext> _contextFactory;
-
-        public TimeTrackingService(IDbContextFactory<TimeTrackerContext> contextFactory)
+        private readonly IAIService _aiService;
+        private readonly AISummaryStateService _summaryState;
+        
+        public TimeTrackingService(
+            IDbContextFactory<TimeTrackerContext> contextFactory,
+            IAIService aiService,
+            AISummaryStateService summaryState)
         {
             _contextFactory = contextFactory;
+            _aiService = aiService;
+            _summaryState = summaryState;
         }
 
         public async Task AddWorkItemAsync(WorkItem item, string userId)
@@ -127,8 +134,18 @@ namespace TimeTracker.Services
                 {
                     context.WorkDays.Remove(updatedDay);
                     await context.SaveChangesAsync();
+                    if (!string.IsNullOrWhiteSpace(item.UserId))
+                    {
+                        await InvalidateAISummaryAsync(item.UserId);
+                    }
                 }
             }
         }
+
+        private async Task InvalidateAISummaryAsync(string userId)
+        {
+            await _aiService.ClearCachedSummaryAsync(userId);
+        }
+        
     }
 }

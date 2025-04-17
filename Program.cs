@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using TimeTracker.Data;
 using TimeTracker.Services;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // key vault stuff
@@ -48,9 +47,11 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 })
 .AddEntityFrameworkStores<TimeTrackerContext>();
 
-
+builder.Services.AddScoped<AISummaryStateService>();
 builder.Services.AddScoped<IAIService, AIService>();
 builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
+builder.Services.AddScoped<IAIService, AIService>();
+
 
 builder.Logging.AddAzureWebAppDiagnostics();
 builder.Services.AddApplicationInsightsTelemetry();
