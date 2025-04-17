@@ -140,23 +140,23 @@ namespace TimeTracker.Services
         public async Task<string?> GetCachedSummaryAsync(string userId)
         {
             await using var db = _dbContextFactory.CreateDbContext();
-            var entry = await db.AISummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+            var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
             return entry?.Summary;
         }
 
         public async Task SaveOrUpdateSummaryAsync(string userId, string summary)
         {
             await using var db = _dbContextFactory.CreateDbContext();
-            var entry = await db.AISummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+            var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
             if (entry is null)
             {
-                entry = new AISummary
+                entry = new AiSummary
                 {
                     UserId = userId,
                     Summary = summary,
                     LastUpdated = DateTime.UtcNow
                 };
-                db.AISummaries.Add(entry);
+                db.AiSummaries.Add(entry);
             }
             else
             {
@@ -170,10 +170,10 @@ namespace TimeTracker.Services
         public async Task ClearCachedSummaryAsync(string userId)
         {
             await using var db = _dbContextFactory.CreateDbContext();
-            var entry = await db.AISummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+            var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
             if (entry is not null)
             {
-                db.AISummaries.Remove(entry);
+                db.AiSummaries.Remove(entry);
                 await db.SaveChangesAsync();
             }
         }

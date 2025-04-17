@@ -1,4 +1,6 @@
-public class AISummary
+namespace TimeTracker.Models;
+
+public class AiSummary
 {
     public int Id { get; set; }
     public string UserId { get; set; } = null!;

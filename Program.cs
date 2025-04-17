@@ -8,7 +8,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 #region Configuration & Key Vault
 
-// Lägg till Azure Key Vault om en URI är specificerad i konfigurationen
 var keyVaultUrl = builder.Configuration["KeyVault:Uri"];
 if (!string.IsNullOrEmpty(keyVaultUrl))
 {
@@ -29,7 +28,7 @@ builder.Services.AddServerSideBlazor();
 
 #region Entity Framework Core & SQL Server
 
-// Registrera DbContext med retry-logik för transient-fel
+// register DbContext with retry logic for transient errors
 builder.Services.AddDbContext<TimeTrackerContext>(
     options => options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -43,7 +42,6 @@ builder.Services.AddDbContext<TimeTrackerContext>(
     ServiceLifetime.Singleton
 );
 
-// Lägg till fabriken separat för ex. Azure Functions eller DI
 builder.Services.AddDbContextFactory<TimeTrackerContext>();
 
 #endregion
