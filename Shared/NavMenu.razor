@@ -6,7 +6,9 @@
     <AuthorizeView>
         <Authorized Context="auth">
             <li class="nav-item px-3 text-light small mb-3">
-                Hej <strong>@auth.User.Identity?.Name</strong>
+                <span class="d-block text-break">
+                    Hej <strong>@auth.User.Identity?.Name</strong>
+                </span>
                 <button class="btn btn-link btn-sm text-warning ps-0" @onclick="Logout">
                     <i class="bi bi-box-arrow-right"></i>
                     <span class="visually-hidden">Logga ut</span>
