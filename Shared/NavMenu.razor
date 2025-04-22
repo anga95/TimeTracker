@@ -1,76 +1,49 @@
-﻿@inject NavigationManager NavigationManager
+﻿@inject NavigationManager NavManager
 
-<AuthorizeView>
-    <Authorized>
-        <div class="nav-item px-3">
-            <span class="nav-link">
-                Hej,
-                @if (context.User.Identity != null)
-                {
-                    @context.User.Identity.Name
-                }
-            </span>
-        </div>
-        <div class="nav-item px-3">
-            <button class="btn btn-link nav-link" @onclick="BeginLogout">Log out</button>
-        </div>
-    </Authorized>
-    <NotAuthorized>
-        <div class="nav-item px-3">
-            <a class="nav-link" href="Identity/Account/Login">Log in</a>
-        </div>
-    </NotAuthorized>
-</AuthorizeView>
+<ul class="nav nav-pills flex-column pt-3">
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">TimeTracker</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+    <!-- logged in or out ---------------------------------------------------->
+    <AuthorizeView>
+        <Authorized Context="auth">
+            <li class="nav-item px-3 text-light small mb-3">
+                Hej <strong>@auth.User.Identity?.Name</strong>
+                <button class="btn btn-link btn-sm text-warning ps-0" @onclick="Logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span class="visually-hidden">Logga ut</span>
+                </button>
+            </li>
+        </Authorized>
 
-@* <div class="nav-item px-3">
-    <NavLink class="nav-link" href="tracktime">
-        <span class="oi oi-clock" aria-hidden="true"></span> Tidrapportering
-    </NavLink>
-</div> *@
+        <NotAuthorized>
+            <li class="nav-item px-3 text-light small mb-3">
+                <a class="text-decoration-none link-light" href="Identity/Account/Login">
+                    <i class="bi bi-box-arrow-in-right"></i> Logga in
+                </a>
+            </li>
+        </NotAuthorized>
+    </AuthorizeView>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/aisummary">
-                <span class="oi oi-book" aria-hidden="true"></span> AI-sammanfattning
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/monthly">
-                <span class="oi oi-calendar" aria-hidden="true"></span> Månadsöversikt
-            </NavLink>
-        </div>
-    </nav>
+    <!-- Main links ------------------------------------------------------->
+    <li class="nav-item px-3">
+        <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+            <i class="bi bi-clock-history"></i> Tidrapportering
+        </NavLink>
+    </li>
 
-</div>
+    <li class="nav-item px-3">
+        <NavLink class="nav-link" href="/aisummary">
+            <i class="bi bi-journal-text"></i> AI‑sammanfattning
+        </NavLink>
+    </li>
+
+    <li class="nav-item px-3">
+        <NavLink class="nav-link" href="/monthly">
+            <i class="bi bi-calendar3"></i> Månadsöversikt
+        </NavLink>
+    </li>
+</ul>
 
 @code {
-    private bool _collapseNavMenu = true;
-
-    private string? NavMenuCssClass => _collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        _collapseNavMenu = !_collapseNavMenu;
-    }
-
-    private void BeginLogout()
-    {
-        // Omdirigera användaren till logout-sidan med en returnUrl till index
-        NavigationManager.NavigateTo("Identity/Account/Logout?returnUrl=/", forceLoad: true);
-    }
+    private void Logout() =>
+        NavManager.NavigateTo("Identity/Account/Logout?returnUrl=/", forceLoad: true);
 }

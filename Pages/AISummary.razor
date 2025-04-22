@@ -14,12 +14,15 @@
 
 <div class="card mb-4">
     <div class="card-body">
-        @if (!string.IsNullOrWhiteSpace(_warningMessage))
+        @if (!string.IsNullOrWhiteSpace(_aiSummary))
         {
-            <div class="alert alert-warning">
-                <strong>Varning:</strong> @_warningMessage
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    @((MarkupString)Markdown.ToHtml(_aiSummary))
+                </div>
             </div>
         }
+
 
         <h3 class="card-title">AI-sammanfattning för de senaste 7 dagarna</h3>
         <button class="btn btn-primary mb-3" @onclick="GenerateAiSummary" disabled="@_isLoading">
