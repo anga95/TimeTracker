@@ -101,7 +101,9 @@
 {
     @foreach (var day in workDays)
     {
-        <h4 class="mt-4">@day.Date:dd MMM yyyy (Summa: @GetRoundedTotal(day) h)</h4>
+        <h4 class="mt-4">
+            @day.Date.ToString("dd MMM yyyy") (Summa: @GetRoundedTotal(day) h)
+        </h4>
 
         <ul class="list-unstyled ms-2 mb-2">
             @foreach (var (proj,h) in GetProjectSummary(day))
