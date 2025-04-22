@@ -7,14 +7,15 @@
         <Authorized Context="auth">
             <li class="nav-item px-3 text-light small mb-3">
                 <span class="d-block text-break">
-                    Hej <strong>@auth.User.Identity?.Name</strong>
+                    Hej <strong>@auth.User.Identity?.Name</strong>
                 </span>
                 <button class="btn btn-link btn-sm text-warning ps-0" @onclick="Logout">
-                    <i class="bi bi-box-arrow-right"></i>
-                    <span class="visually-hidden">Logga ut</span>
+                    <i class="bi bi-box-arrow-right me-1"></i>
+                    Logga ut
                 </button>
             </li>
         </Authorized>
+
 
         <NotAuthorized>
             <li class="nav-item px-3 text-light small mb-3">

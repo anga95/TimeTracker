@@ -2,6 +2,7 @@ using Azure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TimeTracker.Data;
+using TimeTracker.Models;
 using TimeTracker.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -73,6 +74,10 @@ builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
 
 builder.Logging.AddAzureWebAppDiagnostics();
 builder.Services.AddApplicationInsightsTelemetry();
+var appVersion = Environment.GetEnvironmentVariable("APPVERSION")
+                 ?? DateTime.Now.ToString("yyyyMMdd.HHmmss");
+
+builder.Services.Configure<AppSettings>(opts => opts.AppVersion = appVersion);
 
 #endregion
 
