@@ -8,18 +8,16 @@
     
     <!-- Add new workpost -->
     <EditForm Model="NewWorkItem" OnValidSubmit="() => OnAdd.InvokeAsync(NewWorkItem)">
-      <fieldset disabled="!IsAuthenticated">
+      <fieldset disabled="@(!IsAuthenticated)">
         <input type="hidden" @bind="NewWorkItem.WorkDate" />
         <div class="row gy-3 gx-4 align-items-end">
           <div class="col-md-4">
             <label>Projekt</label>
-            <select class="form-select" @bind="NewWorkItem.ProjectId">
-              <option value="0">-- Välj --</option>
-              @foreach (var p in Projects)
-              {
-                <option value="@p.Id">@p.Name</option>
-              }
-            </select>
+            <ProjectSelector
+              Projects="Projects"
+              @bind-SelectedProjectId="NewWorkItem.ProjectId"
+              OnCreateProject="OnCreateProject"
+              OnDeleteProject="OnDeleteProject" />
           </div>
           <div class="col-md-2">
             <label>Timmar</label>
@@ -88,6 +86,9 @@
 
   [Parameter] public EventCallback<WorkItem> OnAdd { get; set; }
   [Parameter] public EventCallback<int> OnDelete { get; set; }
+  [Parameter] public EventCallback<string> OnCreateProject { get; set; }
+  [Parameter] public EventCallback<int>    OnDeleteProject { get; set; }
+
 
   private double GetRoundedTotal(IEnumerable<WorkItem>? items) =>
     items?.Any() == true

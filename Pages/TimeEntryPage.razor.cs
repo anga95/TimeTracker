@@ -13,23 +13,23 @@ namespace TimeTracker.Pages
         [Inject] protected IJSRuntime JSRuntime { get; set; }
 
         // ---------- state ----------------------------------------------------
-        private string currentUserId = "";
-        private List<Project>? projects;
-        private List<WorkDay> monthWorkDays = new();
-        private DateTime selectedDay = DateTime.MinValue;
-        private List<WorkItem>? dayWorkItems;
-        private WorkItem newWorkItem = new() { HoursWorked = 0 };
+        private string _currentUserId = "";
+        private List<Project>? _projects = new List<Project>();
+        private List<WorkDay> _monthWorkDays = new();
+        private DateTime _selectedDay = DateTime.MinValue;
+        private List<WorkItem>? _dayWorkItems;
+        private WorkItem _newWorkItem = new() { HoursWorked = 0 };
 
 
-        private int currentYear;
-        private int currentMonth;
+        private int _currentYear;
+        private int _currentMonth;
 
         private string currentMonthName =>
-            System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(currentMonth);
+            System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(_currentMonth);
 
-        private DateTime today = DateTime.Today;
-        private DateTime gridStart;
-        private int totalRows;
+        private DateTime _today = DateTime.Today;
+        private DateTime _gridStart;
+        private int _totalRows;
 
         private readonly string[] weekdayHeaders =
             { "Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön" };
@@ -37,12 +37,12 @@ namespace TimeTracker.Pages
         protected override async Task OnInitializedAsync()
         {
             var auth = await AuthProvider.GetAuthenticationStateAsync();
-            currentUserId = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+            _currentUserId = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
 
             var today = DateTime.Today;
-            currentYear = today.Year;
-            currentMonth = today.Month;
-            projects = await TimeService.GetProjectsAsync(currentUserId);
+            _currentYear = today.Year;
+            _currentMonth = today.Month;
+            _projects = await TimeService.GetProjectsAsync(_currentUserId);
 
             await LoadMonth();
 
@@ -52,21 +52,21 @@ namespace TimeTracker.Pages
         // ---------- kalender -------------------------------------------------
         private async Task LoadMonth()
         {
-            var all = await TimeService.GetWorkDaysAsync(currentUserId);
-            monthWorkDays = all.Where(d => d.Date.Year == currentYear && d.Date.Month == currentMonth).ToList();
+            var all = await TimeService.GetWorkDaysAsync(_currentUserId);
+            _monthWorkDays = all.Where(d => d.Date.Year == _currentYear && d.Date.Month == _currentMonth).ToList();
 
-            var first = new DateTime(currentYear, currentMonth, 1);
+            var first = new DateTime(_currentYear, _currentMonth, 1);
             int dow = (int)first.DayOfWeek;
             if (dow == 0) dow = 7;
             var offset = dow - 1;
-            gridStart = first.AddDays(-offset);
+            _gridStart = first.AddDays(-offset);
 
-            int cells = offset + DateTime.DaysInMonth(currentYear, currentMonth);
-            totalRows = (int)Math.Ceiling(cells / 7.0);
+            int cells = offset + DateTime.DaysInMonth(_currentYear, _currentMonth);
+            _totalRows = (int)Math.Ceiling(cells / 7.0);
         }
 
         private double GetTotalHours(DateTime d) =>
-            monthWorkDays.FirstOrDefault(w => w.Date.Date == d.Date)?.WorkItems.Sum(i => i.HoursWorked) ?? 0;
+            _monthWorkDays.FirstOrDefault(w => w.Date.Date == d.Date)?.WorkItems.Sum(i => i.HoursWorked) ?? 0;
 
         private double GetRoundedTotal(List<WorkItem>? items) =>
             items != null
@@ -75,9 +75,9 @@ namespace TimeTracker.Pages
 
         private void SelectDay(DateTime d)
         {
-            selectedDay = d;
-            newWorkItem = new WorkItem { WorkDate = d };
-            dayWorkItems = monthWorkDays
+            _selectedDay = d;
+            _newWorkItem = new WorkItem { WorkDate = d };
+            _dayWorkItems = _monthWorkDays
                                .FirstOrDefault(w => w.Date.Date == d.Date)?
                                .WorkItems.ToList()
                            ?? new List<WorkItem>();
@@ -85,37 +85,37 @@ namespace TimeTracker.Pages
 
         private async Task PrevMonth()
         {
-            if (currentMonth == 1)
+            if (_currentMonth == 1)
             {
-                currentMonth = 12;
-                currentYear--;
+                _currentMonth = 12;
+                _currentYear--;
             }
-            else currentMonth--;
+            else _currentMonth--;
 
             await LoadMonth();
-            selectedDay = DateTime.MinValue;
+            _selectedDay = DateTime.MinValue;
         }
 
         private async Task NextMonth()
         {
-            if (currentMonth == 12)
+            if (_currentMonth == 12)
             {
-                currentMonth = 1;
-                currentYear++;
+                _currentMonth = 1;
+                _currentYear++;
             }
-            else currentMonth++;
+            else _currentMonth++;
 
             await LoadMonth();
-            selectedDay = DateTime.MinValue;
+            _selectedDay = DateTime.MinValue;
         }
 
         // ---------- inmatning -------------------------------------------------
         private async Task HandleSubmit()
         {
-            if (newWorkItem.ProjectId == 0) return;
-            await TimeService.AddWorkItemAsync(newWorkItem, currentUserId);
+            if (_newWorkItem.ProjectId == 0) return;
+            await TimeService.AddWorkItemAsync(_newWorkItem, _currentUserId);
             await LoadMonth();
-            SelectDay(selectedDay); // reload items
+            SelectDay(_selectedDay); // reload items
         }
 
         private async Task Delete(int id)
@@ -124,19 +124,38 @@ namespace TimeTracker.Pages
             {
                 await TimeService.DeleteWorkItemAsync(id);
                 await LoadMonth();
-                SelectDay(selectedDay);
+                SelectDay(_selectedDay);
             }
         }
 
         private IEnumerable<(string projectName, double hours)> GetProjectSummary(DateTime day)
         {
-            var wd = monthWorkDays.FirstOrDefault(w => w.Date.Date == day.Date);
+            var wd = _monthWorkDays.FirstOrDefault(w => w.Date.Date == day.Date);
             if (wd == null)
                 return Enumerable.Empty<(string, double)>();
 
             return wd.WorkItems
                 .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
                 .Select(g => (projectName: g.Key, hours: g.Sum(wi => wi.HoursWorked)));
+        }
+
+        // När ett nytt projekt skapas i ProjectsManager
+        private async Task HandleCreateProject(string projectName)
+        {
+            await TimeService.CreateProjectAsync(projectName, _currentUserId);
+            _projects = await TimeService.GetProjectsAsync(_currentUserId);
+            StateHasChanged();
+        }
+
+        // När användaren vill ta bort ett projekt
+        private async Task HandleDeleteProject(int projectId)
+        {
+            if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker att du vill radera projektet?"))
+            {
+                await TimeService.DeleteProjectAsync(projectId);
+                _projects = await TimeService.GetProjectsAsync(_currentUserId);
+                StateHasChanged();
+            }
         }
     }
 }

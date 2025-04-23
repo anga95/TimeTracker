@@ -9,5 +9,6 @@ public interface ITimeTrackingService
     Task<double> GetRoundedDailyTotalAsync(DateTime date, string userId);
     Task<List<Project>> GetProjectsAsync(string userId);
     Task CreateProjectAsync(string projectName, string userId);
+    Task DeleteProjectAsync(int projectId);
     Task DeleteWorkItemAsync(int workItemId);
 }

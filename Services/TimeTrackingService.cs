@@ -112,6 +112,20 @@ namespace TimeTracker.Services
             context.Projects.Add(project);
             await context.SaveChangesAsync();
         }
+        
+        // Create a method to Delete Projects Async
+        public async Task DeleteProjectAsync(int projectId)
+        {
+            await using var context = _contextFactory.CreateDbContext();
+            var project = await context.Projects
+                .Include(p => p.WorkItems)
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+            if (project == null)
+                return;
+
+            context.Projects.Remove(project);
+            await context.SaveChangesAsync();
+        }
 
         public async Task DeleteWorkItemAsync(int workItemId)
         {
