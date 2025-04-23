@@ -1,48 +1,49 @@
 ﻿@using TimeTracker.Models
 @using Microsoft.AspNetCore.Components.Forms
 
-<EditForm EditContext="_editContext"
-          OnValidSubmit="HandleValidSubmit"
-          OnInvalidSubmit="HandleInvalidSubmit">
-  <DataAnnotationsValidator />
-  <ValidationSummary class="text-danger mb-3" />
+@if (_editContext != null)
+{
+  <EditForm EditContext="_editContext" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="text-danger mb-3" />
 
-  <div class="row gy-3 gx-4 align-items-end">
-    <div class="col-md-4">
-      <label>Projekt</label>
-      <ProjectSelector
-        Projects="Projects"
-        @bind-SelectedProjectId="_newItem.ProjectId"
-        OnCreateProject="OnCreateProject"
-        OnDeleteProject="OnDeleteProject" />
-      <ValidationMessage For="@(() => _newItem.ProjectId)" />
-    </div>
+    <div class="row gy-3 gx-4 align-items-end">
+      <div class="col-md-4">
+        <label>Projekt</label>
+        <ProjectSelector
+          Projects="Projects ?? new List<Project>()"
+          @bind-SelectedProjectId="WorkItem.ProjectId"
+          OnCreateProject="OnCreateProject"
+          OnDeleteProject="OnDeleteProject" />
+        <ValidationMessage For="@(() => WorkItem.ProjectId)" />
+      </div>
 
-    <div class="col-md-2">
-      <label>Timmar</label>
-      <InputNumber @bind-Value="_newItem.HoursWorked"
-                   class="form-control"
-                   disabled="@(!IsAuthenticated)" />
-      <ValidationMessage For="@(() => _newItem.HoursWorked)" />
-    </div>
-
-    <div class="col-md-4">
-      <label>Kommentar</label>
-      <InputTextArea @bind-Value="_newItem.Comment"
-                     rows="1"
+      <div class="col-md-2">
+        <label>Timmar</label>
+        <InputNumber @bind-Value="WorkItem.HoursWorked"
                      class="form-control"
                      disabled="@(!IsAuthenticated)" />
-    </div>
+        <ValidationMessage For="@(() => WorkItem.HoursWorked)" />
+      </div>
 
-    <div class="col-md-2 text-end">
-      <button type="submit"
-              class="btn btn-primary"
-              disabled="@(!IsAuthenticated)">
-        Lägg till
-      </button>
+      <div class="col-md-4">
+        <label>Kommentar</label>
+        <InputTextArea @bind-Value="WorkItem.Comment"
+                       rows="1"
+                       class="form-control"
+                       disabled="@(!IsAuthenticated)" />
+      </div>
+
+      <div class="col-md-2 text-end">
+        <button type="submit"
+                class="btn btn-primary"
+                disabled="@(!IsAuthenticated)">
+          Lägg till
+        </button>
+      </div>
     </div>
-  </div>
-</EditForm>
+  </EditForm>
+}
 
 <hr />
 
@@ -79,55 +80,73 @@ else
 }
 
 @code {
-  private WorkItem _newItem = null!;
-  private EditContext _editContext = null!;
-  private DateTime _lastDay = DateTime.MinValue;
+  private EditContext? _editContext;
 
   [Parameter] public DateTime Day { get; set; }
   [Parameter] public List<WorkItem>? Items { get; set; }
   [Parameter] public List<Project>? Projects { get; set; }
   [Parameter] public bool IsAuthenticated { get; set; }
 
+  [Parameter] public WorkItem WorkItem { get; set; } = new WorkItem();
+  [Parameter] public EventCallback<WorkItem> WorkItemChanged { get; set; }
+
   [Parameter] public EventCallback<WorkItem> OnAdd { get; set; }
-  [Parameter] public EventCallback<int>    OnDelete { get; set; }
+  [Parameter] public EventCallback<int> OnDelete { get; set; }
   [Parameter] public EventCallback<string> OnCreateProject { get; set; }
-  [Parameter] public EventCallback<int>    OnDeleteProject { get; set; }
+  [Parameter] public EventCallback<int> OnDeleteProject { get; set; }
+
+  protected override void OnInitialized()
+  {
+      if (WorkItem == null)
+      {
+          WorkItem = new WorkItem { WorkDate = Day };
+      }
+      
+      _editContext = new EditContext(WorkItem);
+  }
 
   protected override void OnParametersSet()
   {
-    if (_lastDay != Day)
-    {
-      _lastDay = Day;
-      _newItem = new WorkItem { WorkDate = Day };
-      _editContext = new EditContext(_newItem);
-    }
-
+      // Always ensure WorkItem exists and has the correct date
+      if (WorkItem == null)
+      {
+          WorkItem = new WorkItem { WorkDate = Day };
+          WorkItemChanged.InvokeAsync(WorkItem);
+      }
+      else
+      {
+          WorkItem.WorkDate = Day;
+      }
+      
+      // Re-create the EditContext if model changed
+      if (_editContext == null || _editContext.Model != WorkItem)
+      {
+          _editContext = new EditContext(WorkItem);
+      }
   }
 
   private async Task HandleValidSubmit()
   {
-    var workItemToSubmit = new WorkItem
-    {
-      WorkDate = _newItem.WorkDate,
-      HoursWorked = _newItem.HoursWorked,
-      ProjectId = _newItem.ProjectId,
-      Comment = _newItem.Comment
-    };
-  
-    await OnAdd.InvokeAsync(workItemToSubmit);
-
-
-    _newItem = new WorkItem { WorkDate = Day };
-    _editContext = new EditContext(_newItem);
+      if (WorkItem.ProjectId == 0) return;
+      
+      // Create a clone to avoid the reference getting cleared after submission
+      var workItemToSubmit = new WorkItem
+      {
+          WorkDate = WorkItem.WorkDate,
+          ProjectId = WorkItem.ProjectId,
+          HoursWorked = WorkItem.HoursWorked,
+          Comment = WorkItem.Comment
+      };
+      
+      // Submit the work item
+      await OnAdd.InvokeAsync(workItemToSubmit);
+      
+      // Reset fields
+      WorkItem.ProjectId = 0;
+      WorkItem.HoursWorked = 0;
+      WorkItem.Comment = null;
+      
+      // Notify parent component
+      await WorkItemChanged.InvokeAsync(WorkItem);
   }
-
-  private void HandleInvalidSubmit(EditContext ctx)
-  {
-  }
-
-  private double GetRoundedTotal(IEnumerable<WorkItem>? items) =>
-    items?.Any() == true
-      ? Math.Ceiling(items.Sum(i => i.HoursWorked) * 2) / 2
-      : 0;
 }
-

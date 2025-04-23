@@ -78,15 +78,15 @@ namespace TimeTracker.Pages
             bool dayChanged = _selectedDay != date;
             _selectedDay = date;
             
-            if (dayChanged || _newWorkItem == null || _newWorkItem.ProjectId != 0)
+            if (_newWorkItem == null)
             {
-                _newWorkItem = new WorkItem { WorkDate = date };
+                _newWorkItem = new WorkItem { WorkDate = date, HoursWorked = 0 };
             }
             else
             {
                 _newWorkItem.WorkDate = date;
             }
-    
+            
             _dayWorkItems = _monthWorkDays
                                 .FirstOrDefault(w => w.Date.Date == date.Date)?
                                 .WorkItems.ToList()
@@ -123,10 +123,10 @@ namespace TimeTracker.Pages
         // ---------- inmatning -------------------------------------------------
         private async Task HandleSubmit(WorkItem workItem)
         {
-            if (workItem.ProjectId == 0) return;
-    
+            if (workItem == null || workItem.ProjectId == 0) return;
+
             var currentDate = _selectedDay;
-    
+
             await TimeService.AddWorkItemAsync(workItem, _currentUserId);
             await LoadMonth();
 
@@ -134,8 +134,19 @@ namespace TimeTracker.Pages
                                 .FirstOrDefault(w => w.Date.Date == currentDate.Date)?
                                 .WorkItems.ToList()
                             ?? new List<WorkItem>();
-                   
-            workItem = new WorkItem { WorkDate = currentDate };
+    
+            // Reset the work item or create a new one
+            if (_newWorkItem == null)
+            {
+                _newWorkItem = new WorkItem { WorkDate = currentDate, HoursWorked = 0 };
+            }
+            else
+            {
+                // Just reset fields, keep the reference
+                _newWorkItem.ProjectId = 0;
+                _newWorkItem.HoursWorked = 0;
+                _newWorkItem.Comment = null;
+            }
         }
 
 

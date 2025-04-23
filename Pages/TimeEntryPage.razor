@@ -29,6 +29,7 @@
     Day="_selectedDay"
     Items="_dayWorkItems"
     Projects="_projects"
+    @bind-WorkItem="_newWorkItem"
     IsAuthenticated="!string.IsNullOrEmpty(_currentUserId)"
     OnAdd="HandleSubmit"
     OnDelete="Delete"
