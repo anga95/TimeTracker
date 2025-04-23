@@ -1,0 +1,264 @@
+﻿@page "/track"
+@using TimeTracker.Models
+@using TimeTracker.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@inject ITimeTrackingService TimeService
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JSRuntime
+
+<div class="row mb-4">
+  <div class="col">
+    <button class="btn btn-secondary me-2" @onclick="PrevMonth">« Föregående</button>
+    <strong>@currentMonthName @currentYear</strong>
+    <button class="btn btn-secondary ms-2" @onclick="NextMonth">Nästa »</button>
+  </div>
+</div>
+
+<!-- Kalendergrid -->
+<div class="row text-center fw-bold">
+  @foreach (var h in weekdayHeaders)
+  {
+    <div class="col border">@h</div>
+  }
+</div>
+@for (int r = 0; r < totalRows; r++)
+{
+  <div class="row">
+    @for (int c = 0; c < 7; c++)
+    {
+      var day = gridStart.AddDays(r * 7 + c);
+      bool inMonth = day.Month == currentMonth;
+      var totalHours = GetTotalHours(day);
+
+      bool isToday = day.Date == today;
+
+      // bygga upp klasser
+      var classes = new List<string> { "col", "border", "p-2", "text-start" };
+      if (!inMonth)             classes.Add("bg-light");
+      else if (isToday)        classes.Add("bg-info bg-opacity-25");
+      else if (totalHours > 0) classes.Add("bg-success bg-opacity-10");
+
+      <div class="@string.Join(" ", classes)"
+           style="cursor:pointer; height:120px; overflow:hidden;"
+           @onclick="() => SelectDay(day)">
+        <!-- Datum -->
+        <div>
+          <strong class="@(isToday ? "text-info" : "")">@day.Day</strong>
+        </div>
+
+        @if (totalHours > 0)
+        {
+          <!-- Total timmar -->
+          <div><strong>@totalHours h</strong></div>
+
+          <!-- Projekt-summering -->
+          <ul class="list-unstyled small mb-0" style="line-height:1.1;">
+            @foreach (var (project, hours) in GetProjectSummary(day).Take(3))
+            {
+              <li>@project: @hours h</li>
+            }
+            @if (GetProjectSummary(day).Count() > 3)
+            {
+              <li>…</li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </div>
+}
+
+<!-- Detaljvy för vald dag -->
+@if (selectedDay != DateTime.MinValue)
+{
+  <div class="card shadow-sm mt-4">
+    <div class="card-body">
+      <h5>@selectedDay.ToString("dddd, dd MMM yyyy") – totalt @GetRoundedTotal(dayWorkItems) h</h5>
+      
+      <!-- Lägg till ny tidpost -->
+      <EditForm Model="newWorkItem" OnValidSubmit="HandleSubmit">
+        <fieldset disabled="@string.IsNullOrEmpty(currentUserId)">
+        <input type="hidden" @bind="newWorkItem.WorkDate"/>
+        <div class="row gy-3 gx-4 align-items-end">
+          <div class="col-md-4">
+            <label>Projekt</label>
+            <select class="form-select" @bind="newWorkItem.ProjectId">
+              <option value="0">-- Välj --</option>
+              @foreach (var p in projects)
+              {
+                <option value="@p.Id">@p.Name</option>
+              }
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label>Timmar</label>
+            <InputNumber @bind-Value="newWorkItem.HoursWorked" class="form-control"/>
+          </div>
+          <div class="col-md-4">
+            <label>Kommentar</label>
+            <InputTextArea @bind-Value="newWorkItem.Comment" rows="1" class="form-control"/>
+          </div>
+          <div class="col-md-2 text-end">
+            <button type="submit" class="btn btn-primary">Lägg till</button>
+          </div>
+        </div>
+        @if (string.IsNullOrEmpty(currentUserId))
+        {
+          <div class="alert alert-warning mt-3">
+            För att spara din tidrapportering måste du vara inloggad.
+          </div>
+        }
+        </fieldset>
+      </EditForm>
+
+      <hr />
+
+      <!-- Lista befintliga -->
+      @if (dayWorkItems?.Any() ?? false)
+      {
+        <div class="table-responsive">
+          <table class="table">
+            <thead class="table-light">
+              <tr><th>Projekt</th><th>Timmar</th><th>Kommentar</th><th></th></tr>
+            </thead>
+            <tbody>
+              @foreach (var item in dayWorkItems)
+              {
+                <tr>
+                  <td>@item.Project?.Name</td>
+                  <td>@item.HoursWorked</td>
+                  <td>@item.Comment</td>
+                  <td class="text-end">
+                    <button class="btn btn-outline-danger btn-sm"
+                            @onclick="() => Delete(item.Id)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      else
+      {
+        <p>Inga tids­poster för den här dagen.</p>
+      }
+    </div>
+  </div>
+}
+
+@code {
+  // ---------- state ----------------------------------------------------
+  private string currentUserId = "";
+  private List<Project>? projects;
+  private List<WorkDay> monthWorkDays = new();
+  private DateTime selectedDay = DateTime.MinValue;
+  private List<WorkItem>? dayWorkItems;
+  private WorkItem newWorkItem = new() { HoursWorked = 0 };
+  
+
+  private int currentYear;
+  private int currentMonth;
+  private string currentMonthName => 
+    System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(currentMonth);
+  private DateTime today = DateTime.Today;
+  private DateTime gridStart;
+  private int totalRows;
+  private readonly string[] weekdayHeaders = 
+    { "Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön" };
+
+  protected override async Task OnInitializedAsync()
+  {
+    var auth = await AuthProvider.GetAuthenticationStateAsync();
+    currentUserId = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+
+    var today = DateTime.Today;
+    currentYear = today.Year;
+    currentMonth = today.Month;
+    projects = await TimeService.GetProjectsAsync(currentUserId);
+
+    await LoadMonth();
+  }
+
+  // ---------- kalender -------------------------------------------------
+  private async Task LoadMonth()
+  {
+    var all = await TimeService.GetWorkDaysAsync(currentUserId);
+    monthWorkDays = all.Where(d => d.Date.Year == currentYear && d.Date.Month == currentMonth).ToList();
+    
+    var first = new DateTime(currentYear, currentMonth, 1);
+    int dow = (int)first.DayOfWeek;
+    if (dow == 0) dow = 7;
+    var offset = dow - 1;
+    gridStart = first.AddDays(-offset);
+
+    int cells = offset + DateTime.DaysInMonth(currentYear, currentMonth);
+    totalRows = (int)Math.Ceiling(cells / 7.0);
+  }
+
+  private double GetTotalHours(DateTime d) =>
+    monthWorkDays.FirstOrDefault(w => w.Date.Date == d.Date)?.WorkItems.Sum(i => i.HoursWorked) ?? 0;
+
+  private double GetRoundedTotal(List<WorkItem>? items) =>
+    items != null
+      ? Math.Ceiling(items.Sum(i => i.HoursWorked) * 2) / 2
+      : 0;
+
+  private void SelectDay(DateTime d)
+  {
+    selectedDay = d;
+    newWorkItem = new WorkItem { WorkDate = d };
+    dayWorkItems = monthWorkDays
+      .FirstOrDefault(w => w.Date.Date == d.Date)?
+      .WorkItems.ToList() 
+      ?? new List<WorkItem>();
+  }
+
+  private async Task PrevMonth()
+  {
+    if (currentMonth == 1) { currentMonth = 12; currentYear--; }
+    else currentMonth--;
+    await LoadMonth();
+    selectedDay = DateTime.MinValue;
+  }
+
+  private async Task NextMonth()
+  {
+    if (currentMonth == 12) { currentMonth = 1; currentYear++; }
+    else currentMonth++;
+    await LoadMonth();
+    selectedDay = DateTime.MinValue;
+  }
+
+  // ---------- inmatning -------------------------------------------------
+  private async Task HandleSubmit()
+  {
+    if (newWorkItem.ProjectId == 0) return;
+    await TimeService.AddWorkItemAsync(newWorkItem, currentUserId);
+    await LoadMonth();
+    SelectDay(selectedDay);  // reload items
+  }
+
+  private async Task Delete(int id)
+  {
+    if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
+    {
+      await TimeService.DeleteWorkItemAsync(id);
+      await LoadMonth();
+      SelectDay(selectedDay);
+    }
+  }
+  
+  private IEnumerable<(string projectName, double hours)> GetProjectSummary(DateTime day)
+  {
+    var wd = monthWorkDays.FirstOrDefault(w => w.Date.Date == day.Date);
+    if (wd == null)
+      return Enumerable.Empty<(string, double)>();
+
+    return wd.WorkItems
+      .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
+      .Select(g => (projectName: g.Key, hours: g.Sum(wi => wi.HoursWorked)));
+  }
+}
