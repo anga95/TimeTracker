@@ -1,5 +1,6 @@
 ﻿@page "/timeEntryPage"
 @page "/"
+@using TimeTracker.Pages.Components
 
 <div class="row mb-4">
   <div class="col">
@@ -10,140 +11,26 @@
 </div>
 
 <!-- Kalendergrid -->
-<div class="row text-center fw-bold">
-  @foreach (var h in weekdayHeaders)
-  {
-    <div class="col border">@h</div>
-  }
-</div>
-@for (int r = 0; r < totalRows; r++)
-{
-  <div class="row">
-    @for (int c = 0; c < 7; c++)
-    {
-      var day = gridStart.AddDays(r * 7 + c);
-      bool inMonth    = day.Month == currentMonth;
-      var totalHours  = GetTotalHours(day);
-      bool isToday    = day.Date == today;
-      bool isSelected = day.Date == selectedDay.Date;
-
-      // 2) Bygg klasser, lägg till fet border om isSelected
-      var classes = new List<string> { "col", "border", "p-2", "text-start" };
-      if (!inMonth)             classes.Add("bg-light");
-      else if (isToday)         classes.Add("bg-info bg-opacity-25");
-      else if (totalHours > 0)  classes.Add("bg-success bg-opacity-10");
-
-      if (isSelected)
-      {
-        classes.Add("border-2");
-        classes.Add("border-dark");
-      }
-
-      <div class="@string.Join(" ", classes)"
-           style="cursor:pointer; height:120px; overflow:hidden;"
-           @onclick="() => SelectDay(day)">
-        <div>
-          <strong class="@(isToday ? "text-info" : "")">
-            @day.Day
-          </strong>
-        </div>
-
-        @if (totalHours > 0)
-        {
-          <div><strong>@totalHours h</strong></div>
-          <ul class="list-unstyled small mb-0" style="line-height:1.1;">
-            @foreach (var (project, hours) in GetProjectSummary(day).Take(3))
-            {
-              <li>@project: @hours h</li>
-            }
-            @if (GetProjectSummary(day).Count() > 3)
-            {
-              <li>…</li>
-            }
-          </ul>
-        }
-      </div>
-    }
-  </div>
-}
+<CalendarGrid
+  GridStart="gridStart"
+  TotalRows="totalRows"
+  CurrentMonth="currentMonth"
+  Today="today"
+  SelectedDay="selectedDay"
+  GetTotalHours="GetTotalHours"
+  GetProjectSummary="GetProjectSummary"
+  DayClicked="SelectDay" />
 
 
 <!-- Detaljvy för vald dag -->
 @if (selectedDay != DateTime.MinValue)
 {
-  <div class="card shadow-sm mt-4">
-    <div class="card-body">
-      <h5>@selectedDay.ToString("dddd, dd MMM yyyy") – totalt @GetRoundedTotal(dayWorkItems) h</h5>
-      
-      <!-- Lägg till ny tidpost -->
-      <EditForm Model="newWorkItem" OnValidSubmit="HandleSubmit">
-        <fieldset disabled="@string.IsNullOrEmpty(currentUserId)">
-        <input type="hidden" @bind="newWorkItem.WorkDate"/>
-        <div class="row gy-3 gx-4 align-items-end">
-          <div class="col-md-4">
-            <label>Projekt</label>
-            <select class="form-select" @bind="newWorkItem.ProjectId">
-              <option value="0">-- Välj --</option>
-              @foreach (var p in projects)
-              {
-                <option value="@p.Id">@p.Name</option>
-              }
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label>Timmar</label>
-            <InputNumber @bind-Value="newWorkItem.HoursWorked" class="form-control"/>
-          </div>
-          <div class="col-md-4">
-            <label>Kommentar</label>
-            <InputTextArea @bind-Value="newWorkItem.Comment" rows="1" class="form-control"/>
-          </div>
-          <div class="col-md-2 text-end">
-            <button type="submit" class="btn btn-primary">Lägg till</button>
-          </div>
-        </div>
-        @if (string.IsNullOrEmpty(currentUserId))
-        {
-          <div class="alert alert-warning mt-3">
-            För att spara din tidrapportering måste du vara inloggad.
-          </div>
-        }
-        </fieldset>
-      </EditForm>
-
-      <hr />
-
-      <!-- Lista befintliga -->
-      @if (dayWorkItems?.Any() ?? false)
-      {
-        <div class="table-responsive">
-          <table class="table">
-            <thead class="table-light">
-              <tr><th>Projekt</th><th>Timmar</th><th>Kommentar</th><th></th></tr>
-            </thead>
-            <tbody>
-              @foreach (var item in dayWorkItems)
-              {
-                <tr>
-                  <td>@item.Project?.Name</td>
-                  <td>@item.HoursWorked</td>
-                  <td>@item.Comment</td>
-                  <td class="text-end">
-                    <button class="btn btn-outline-danger btn-sm"
-                            @onclick="() => Delete(item.Id)">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-      else
-      {
-        <p>Inga tids­poster för den här dagen.</p>
-      }
-    </div>
-  </div>
+  <DayDetail
+    Day="selectedDay"
+    Items="dayWorkItems"
+    Projects="projects"
+    NewWorkItem="newWorkItem"
+    IsAuthenticated="!string.IsNullOrEmpty(currentUserId)"
+    OnAdd="HandleSubmit"
+    OnDelete="Delete" />
 }

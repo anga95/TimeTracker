@@ -1,0 +1,65 @@
+﻿@using TimeTracker.Models
+
+<div class="row text-center fw-bold">
+  @foreach (var h in WeekdayHeaders)
+  {
+    <div class="col border">@h</div>
+  }
+</div>
+@for (int r = 0; r < TotalRows; r++)
+{
+  <div class="row">
+    @for (int c = 0; c < 7; c++)
+    {
+      var day = GridStart.AddDays(r * 7 + c);
+      bool inMonth    = day.Month == CurrentMonth;
+      var totalHours  = GetTotalHours(day);
+      bool isToday    = day.Date == Today.Date;
+      bool isSelected = day.Date == SelectedDay.Date;
+
+      // Bygg upp CSS-klasser dynamiskt
+      var classes = new List<string> { "col", "border", "p-2", "text-start" };
+      if (!inMonth)             classes.Add("bg-light");
+      else if (isToday)         classes.Add("bg-info bg-opacity-25");
+      else if (totalHours > 0)  classes.Add("bg-success bg-opacity-10");
+      if (isSelected)
+      {
+        classes.Add("border-2");
+        classes.Add("border-dark");
+      }
+
+      <div class="@string.Join(" ", classes)"
+           style="cursor:pointer; height:120px; overflow:hidden;"
+           @onclick="() => DayClicked.InvokeAsync(day)">
+        <div><strong class="@(isToday ? "text-info" : "")">@day.Day</strong></div>
+        @if (totalHours > 0)
+        {
+          <div><strong>@totalHours h</strong></div>
+          <ul class="list-unstyled small mb-0" style="line-height:1.1;">
+            @foreach (var (proj, hrs) in GetProjectSummary(day).Take(3))
+            {
+              <li>@proj: @hrs h</li>
+            }
+            @if (GetProjectSummary(day).Count() > 3)
+            {
+              <li>…</li>
+            }
+          </ul>
+        }
+      </div>
+    }
+  </div>
+}
+
+@code {
+  [Parameter] public DateTime GridStart { get; set; }
+  [Parameter] public int TotalRows { get; set; }
+  [Parameter] public int CurrentMonth { get; set; }
+  [Parameter] public DateTime Today { get; set; }
+  [Parameter] public DateTime SelectedDay { get; set; }
+  [Parameter] public Func<DateTime, double> GetTotalHours { get; set; } = _ => 0;
+  [Parameter] public Func<DateTime, IEnumerable<(string project, double hours)>> GetProjectSummary { get; set; } = _ => Enumerable.Empty<(string, double)>();
+  [Parameter] public EventCallback<DateTime> DayClicked { get; set; }
+
+  private string[] WeekdayHeaders => new[] { "Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön" };
+}
