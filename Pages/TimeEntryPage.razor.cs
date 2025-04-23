@@ -73,15 +73,26 @@ namespace TimeTracker.Pages
                 ? Math.Ceiling(items.Sum(i => i.HoursWorked) * 2) / 2
                 : 0;
 
-        private void SelectDay(DateTime d)
+        private void SelectDay(DateTime date)
         {
-            _selectedDay = d;
-            _newWorkItem = new WorkItem { WorkDate = d };
+            bool dayChanged = _selectedDay != date;
+            _selectedDay = date;
+            
+            if (dayChanged || _newWorkItem == null || _newWorkItem.ProjectId != 0)
+            {
+                _newWorkItem = new WorkItem { WorkDate = date };
+            }
+            else
+            {
+                _newWorkItem.WorkDate = date;
+            }
+    
             _dayWorkItems = _monthWorkDays
-                               .FirstOrDefault(w => w.Date.Date == d.Date)?
-                               .WorkItems.ToList()
-                           ?? new List<WorkItem>();
+                                .FirstOrDefault(w => w.Date.Date == date.Date)?
+                                .WorkItems.ToList()
+                            ?? new List<WorkItem>();
         }
+
 
         private async Task PrevMonth()
         {
@@ -110,13 +121,23 @@ namespace TimeTracker.Pages
         }
 
         // ---------- inmatning -------------------------------------------------
-        private async Task HandleSubmit()
+        private async Task HandleSubmit(WorkItem workItem)
         {
-            if (_newWorkItem.ProjectId == 0) return;
-            await TimeService.AddWorkItemAsync(_newWorkItem, _currentUserId);
+            if (workItem.ProjectId == 0) return;
+    
+            var currentDate = _selectedDay;
+    
+            await TimeService.AddWorkItemAsync(workItem, _currentUserId);
             await LoadMonth();
-            SelectDay(_selectedDay); // reload items
+
+            _dayWorkItems = _monthWorkDays
+                                .FirstOrDefault(w => w.Date.Date == currentDate.Date)?
+                                .WorkItems.ToList()
+                            ?? new List<WorkItem>();
+                   
+            workItem = new WorkItem { WorkDate = currentDate };
         }
+
 
         private async Task Delete(int id)
         {

@@ -3,24 +3,22 @@
 @inject IJSRuntime JSRuntime
 
 <div class="input-group">
-  <!-- 1. Select för att välja befintligt projekt -->
-  <select class="form-select"
-          @bind="SelectedProjectId">
-    <option value="0">-- Välj projekt --</option>
-    @foreach (var p in Projects)
-    {
-      <option value="@p.Id">@p.Name</option>
-    }
-  </select>
+<select class="form-select"
+        value="@SelectedProjectId"
+        @onchange="OnSelectionChanged">
+  <option value="0">-- Välj projekt --</option>
+  @foreach (var p in Projects)
+  {
+    <option value="@p.Id">@p.Name</option>
+  }
+</select>
 
-  <!-- 2. Knapp för att skapa nytt projekt -->
   <button class="btn btn-outline-secondary"
           type="button"
           @onclick="() => _showModal = true">
     <i class="bi bi-plus-circle"></i>
   </button>
 
-  <!-- 3. Knapp för att radera valt projekt -->
   <button class="btn btn-outline-danger"
           type="button"
           disabled="@(SelectedProjectId == 0)"
@@ -29,7 +27,6 @@
   </button>
 </div>
 
-<!-- Modal för att lägga till projekt -->
 @if (_showModal)
 {
   <div class="modal fade show" style="display:block;">
@@ -60,11 +57,9 @@
 @code {
   [Parameter] public List<Project> Projects { get; set; } = new();
 
-  // two-way bind för valt ProjectId
   [Parameter] public int SelectedProjectId { get; set; }
   [Parameter] public EventCallback<int> SelectedProjectIdChanged { get; set; }
 
-  // callbacks för skapa och ta bort
   [Parameter] public EventCallback<string> OnCreateProject { get; set; }
   [Parameter] public EventCallback<int>    OnDeleteProject { get; set; }
 
@@ -89,12 +84,19 @@
 
   async Task ConfirmDelete()
   {
-    // validera att användaren verkligen vill ta bort
     if (await JSRuntime.InvokeAsync<bool>("confirm", "Radera projekt?"))
     {
       await OnDeleteProject.InvokeAsync(SelectedProjectId);
-      // nollställ valt om det raderats
       await SelectedProjectIdChanged.InvokeAsync(0);
+    }
+  }
+
+  private async Task OnSelectionChanged(ChangeEventArgs e)
+  {
+    if (int.TryParse(e.Value?.ToString(), out int newValue ))
+    {
+      SelectedProjectId = newValue;
+      await SelectedProjectIdChanged.InvokeAsync(newValue);
     }
   }
 }

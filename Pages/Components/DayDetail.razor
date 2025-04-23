@@ -1,97 +1,133 @@
 ﻿@using TimeTracker.Models
-@using Microsoft.AspNetCore.Components
-@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
 
-<div class="card shadow-sm mt-4">
-  <div class="card-body">
-    <h5>@Day.ToString("dddd, dd MMM yyyy") – totalt @GetRoundedTotal(Items) h</h5>
-    
-    <!-- Add new workpost -->
-    <EditForm Model="NewWorkItem" OnValidSubmit="() => OnAdd.InvokeAsync(NewWorkItem)">
-      <fieldset disabled="@(!IsAuthenticated)">
-        <input type="hidden" @bind="NewWorkItem.WorkDate" />
-        <div class="row gy-3 gx-4 align-items-end">
-          <div class="col-md-4">
-            <label>Projekt</label>
-            <ProjectSelector
-              Projects="Projects"
-              @bind-SelectedProjectId="NewWorkItem.ProjectId"
-              OnCreateProject="OnCreateProject"
-              OnDeleteProject="OnDeleteProject" />
-          </div>
-          <div class="col-md-2">
-            <label>Timmar</label>
-            <InputNumber @bind-Value="NewWorkItem.HoursWorked" class="form-control" />
-          </div>
-          <div class="col-md-4">
-            <label>Kommentar</label>
-            <InputTextArea @bind-Value="NewWorkItem.Comment" rows="1" class="form-control" />
-          </div>
-          <div class="col-md-2 text-end">
-            <button type="submit" class="btn btn-primary">Lägg till</button>
-          </div>
-        </div>
+<EditForm EditContext="_editContext"
+          OnValidSubmit="HandleValidSubmit"
+          OnInvalidSubmit="HandleInvalidSubmit">
+  <DataAnnotationsValidator />
+  <ValidationSummary class="text-danger mb-3" />
 
-        @if (!IsAuthenticated)
-        {
-          <div class="alert alert-warning mt-3">
-            För att spara måste du vara inloggad.
-          </div>
-        }
-      </fieldset>
-    </EditForm>
+  <div class="row gy-3 gx-4 align-items-end">
+    <div class="col-md-4">
+      <label>Projekt</label>
+      <ProjectSelector
+        Projects="Projects"
+        @bind-SelectedProjectId="_newItem.ProjectId"
+        OnCreateProject="OnCreateProject"
+        OnDeleteProject="OnDeleteProject" />
+      <ValidationMessage For="@(() => _newItem.ProjectId)" />
+    </div>
 
-    <hr />
+    <div class="col-md-2">
+      <label>Timmar</label>
+      <InputNumber @bind-Value="_newItem.HoursWorked"
+                   class="form-control"
+                   disabled="@(!IsAuthenticated)" />
+      <ValidationMessage For="@(() => _newItem.HoursWorked)" />
+    </div>
 
-    <!-- List current workposts -->
-    @if (Items?.Any() ?? false)
-    {
-      <div class="table-responsive">
-        <table class="table">
-          <thead class="table-light">
-            <tr><th>Projekt</th><th>Timmar</th><th>Kommentar</th><th></th></tr>
-          </thead>
-          <tbody>
-            @foreach (var item in Items)
-            {
-              <tr>
-                <td>@item.Project?.Name</td>
-                <td>@item.HoursWorked</td>
-                <td>@item.Comment</td>
-                <td class="text-end">
-                  <button class="btn btn-outline-danger btn-sm"
-                          @onclick="() => OnDelete.InvokeAsync(item.Id)">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-    else
-    {
-      <p>Inga tids­poster för denna dag.</p>
-    }
+    <div class="col-md-4">
+      <label>Kommentar</label>
+      <InputTextArea @bind-Value="_newItem.Comment"
+                     rows="1"
+                     class="form-control"
+                     disabled="@(!IsAuthenticated)" />
+    </div>
+
+    <div class="col-md-2 text-end">
+      <button type="submit"
+              class="btn btn-primary"
+              disabled="@(!IsAuthenticated)">
+        Lägg till
+      </button>
+    </div>
   </div>
-</div>
+</EditForm>
+
+<hr />
+
+@if (Items?.Any() ?? false)
+{
+  <div class="table-responsive">
+    <table class="table">
+      <thead class="table-light">
+        <tr><th>Projekt</th><th>Timmar</th><th>Kommentar</th><th></th></tr>
+      </thead>
+      <tbody>
+        @foreach (var item in Items)
+        {
+          <tr>
+            <td>@item.Project?.Name</td>
+            <td>@item.HoursWorked</td>
+            <td>@item.Comment</td>
+            <td class="text-end">
+              <button class="btn btn-outline-danger btn-sm"
+                      @onclick="() => OnDelete.InvokeAsync(item.Id)"
+                      disabled="@(!IsAuthenticated)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+else
+{
+  <p>Inga tids­poster för denna dag.</p>
+}
 
 @code {
+  private WorkItem _newItem = null!;
+  private EditContext _editContext = null!;
+  private DateTime _lastDay = DateTime.MinValue;
+
   [Parameter] public DateTime Day { get; set; }
   [Parameter] public List<WorkItem>? Items { get; set; }
   [Parameter] public List<Project>? Projects { get; set; }
-  [Parameter] public WorkItem NewWorkItem { get; set; } = new();
   [Parameter] public bool IsAuthenticated { get; set; }
 
   [Parameter] public EventCallback<WorkItem> OnAdd { get; set; }
-  [Parameter] public EventCallback<int> OnDelete { get; set; }
+  [Parameter] public EventCallback<int>    OnDelete { get; set; }
   [Parameter] public EventCallback<string> OnCreateProject { get; set; }
   [Parameter] public EventCallback<int>    OnDeleteProject { get; set; }
 
+  protected override void OnParametersSet()
+  {
+    if (_lastDay != Day)
+    {
+      _lastDay = Day;
+      _newItem = new WorkItem { WorkDate = Day };
+      _editContext = new EditContext(_newItem);
+    }
+
+  }
+
+  private async Task HandleValidSubmit()
+  {
+    var workItemToSubmit = new WorkItem
+    {
+      WorkDate = _newItem.WorkDate,
+      HoursWorked = _newItem.HoursWorked,
+      ProjectId = _newItem.ProjectId,
+      Comment = _newItem.Comment
+    };
+  
+    await OnAdd.InvokeAsync(workItemToSubmit);
+
+
+    _newItem = new WorkItem { WorkDate = Day };
+    _editContext = new EditContext(_newItem);
+  }
+
+  private void HandleInvalidSubmit(EditContext ctx)
+  {
+  }
 
   private double GetRoundedTotal(IEnumerable<WorkItem>? items) =>
     items?.Any() == true
       ? Math.Ceiling(items.Sum(i => i.HoursWorked) * 2) / 2
       : 0;
 }
+
