@@ -13,8 +13,7 @@
         <ProjectSelector
           Projects="Projects ?? new List<Project>()"
           @bind-SelectedProjectId="WorkItem.ProjectId"
-          OnCreateProject="OnCreateProject"
-          OnDeleteProject="OnDeleteProject" />
+          OnProjectChanged="OnProjectsChanged" />
         <ValidationMessage For="@(() => WorkItem.ProjectId)" />
       </div>
 
@@ -92,8 +91,7 @@ else
 
   [Parameter] public EventCallback<WorkItem> OnAdd { get; set; }
   [Parameter] public EventCallback<int> OnDelete { get; set; }
-  [Parameter] public EventCallback<string> OnCreateProject { get; set; }
-  [Parameter] public EventCallback<int> OnDeleteProject { get; set; }
+  [Parameter] public EventCallback OnProjectsChanged { get; set; }
 
   protected override void OnInitialized()
   {

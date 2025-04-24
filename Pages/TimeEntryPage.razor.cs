@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 using TimeTracker.Models;
+using TimeTracker.Pages.Components;
 using TimeTracker.Services;
 
 namespace TimeTracker.Pages
@@ -12,6 +13,9 @@ namespace TimeTracker.Pages
         [Inject] protected AuthenticationStateProvider AuthProvider { get; set; }
         [Inject] protected IJSRuntime JSRuntime { get; set; }
 
+        // Component reference to access public methods
+        private CalendarGrid _calendarGrid;
+
         // ---------- state ----------------------------------------------------
         private string _currentUserId = "";
         private List<Project>? _projects = new List<Project>();
@@ -20,20 +24,9 @@ namespace TimeTracker.Pages
         private List<WorkItem>? _dayWorkItems;
         private WorkItem _newWorkItem = new() { HoursWorked = 0 };
 
-
         private int _currentYear;
         private int _currentMonth;
-
-        private string currentMonthName =>
-            System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(_currentMonth);
-
-        private DateTime _today = DateTime.Today;
-        private DateTime _gridStart;
-        private int _totalRows;
-
-        private readonly string[] weekdayHeaders =
-            { "Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön" };
-
+        
         protected override async Task OnInitializedAsync()
         {
             var auth = await AuthProvider.GetAuthenticationStateAsync();
@@ -43,98 +36,42 @@ namespace TimeTracker.Pages
             _currentYear = today.Year;
             _currentMonth = today.Month;
             _projects = await TimeService.GetProjectsAsync(_currentUserId);
-
-            await LoadMonth();
-
-            SelectDay(today);
         }
 
-        // ---------- kalender -------------------------------------------------
-        private async Task LoadMonth()
+        private void HandleMonthDataLoaded(List<WorkDay> workDays)
         {
-            var all = await TimeService.GetWorkDaysAsync(_currentUserId);
-            _monthWorkDays = all.Where(d => d.Date.Year == _currentYear && d.Date.Month == _currentMonth).ToList();
-
-            var first = new DateTime(_currentYear, _currentMonth, 1);
-            int dow = (int)first.DayOfWeek;
-            if (dow == 0) dow = 7;
-            var offset = dow - 1;
-            _gridStart = first.AddDays(-offset);
-
-            int cells = offset + DateTime.DaysInMonth(_currentYear, _currentMonth);
-            _totalRows = (int)Math.Ceiling(cells / 7.0);
+            _monthWorkDays = workDays;
+            
+            // If we have a selected day, update the day items
+            if (_selectedDay != DateTime.MinValue)
+            {
+                UpdateDayWorkItems();
+            }
         }
 
-        private double GetTotalHours(DateTime d) =>
-            _monthWorkDays.FirstOrDefault(w => w.Date.Date == d.Date)?.WorkItems.Sum(i => i.HoursWorked) ?? 0;
-
-        private double GetRoundedTotal(List<WorkItem>? items) =>
-            items != null
-                ? Math.Ceiling(items.Sum(i => i.HoursWorked) * 2) / 2
-                : 0;
-
-        private void SelectDay(DateTime date)
+        private void UpdateDayWorkItems()
         {
-            bool dayChanged = _selectedDay != date;
-            _selectedDay = date;
-            
-            if (_newWorkItem == null)
-            {
-                _newWorkItem = new WorkItem { WorkDate = date, HoursWorked = 0 };
-            }
-            else
-            {
-                _newWorkItem.WorkDate = date;
-            }
-            
             _dayWorkItems = _monthWorkDays
-                                .FirstOrDefault(w => w.Date.Date == date.Date)?
-                                .WorkItems.ToList()
-                            ?? new List<WorkItem>();
-        }
-
-
-        private async Task PrevMonth()
-        {
-            if (_currentMonth == 1)
-            {
-                _currentMonth = 12;
-                _currentYear--;
-            }
-            else _currentMonth--;
-
-            await LoadMonth();
-            _selectedDay = DateTime.MinValue;
-        }
-
-        private async Task NextMonth()
-        {
-            if (_currentMonth == 12)
-            {
-                _currentMonth = 1;
-                _currentYear++;
-            }
-            else _currentMonth++;
-
-            await LoadMonth();
-            _selectedDay = DateTime.MinValue;
+                .FirstOrDefault(w => w.Date.Date == _selectedDay.Date)?
+                .WorkItems.ToList()
+                ?? new List<WorkItem>();
         }
 
         // ---------- inmatning -------------------------------------------------
-        private async Task HandleSubmit(WorkItem workItem)
+        private async Task AddWorkItem(WorkItem workItem)
         {
             if (workItem == null || workItem.ProjectId == 0) return;
 
             var currentDate = _selectedDay;
 
             await TimeService.AddWorkItemAsync(workItem, _currentUserId);
-            await LoadMonth();
+            
+            // Refresh the calendar data
+            if (_calendarGrid != null)
+            {
+                await _calendarGrid.RefreshDataAsync();
+            }
 
-            _dayWorkItems = _monthWorkDays
-                                .FirstOrDefault(w => w.Date.Date == currentDate.Date)?
-                                .WorkItems.ToList()
-                            ?? new List<WorkItem>();
-    
             // Reset the work item or create a new one
             if (_newWorkItem == null)
             {
@@ -149,45 +86,32 @@ namespace TimeTracker.Pages
             }
         }
 
-
-        private async Task Delete(int id)
+        private async Task DeleteWorkItem(int id)
         {
             if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
             {
                 await TimeService.DeleteWorkItemAsync(id);
-                await LoadMonth();
-                SelectDay(_selectedDay);
+                
+                // Refresh the calendar data
+                if (_calendarGrid != null)
+                {
+                    await _calendarGrid.RefreshDataAsync();
+                }
             }
         }
 
-        private IEnumerable<(string projectName, double hours)> GetProjectSummary(DateTime day)
+        private async Task RefreshProjects()
         {
-            var wd = _monthWorkDays.FirstOrDefault(w => w.Date.Date == day.Date);
-            if (wd == null)
-                return Enumerable.Empty<(string, double)>();
-
-            return wd.WorkItems
-                .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
-                .Select(g => (projectName: g.Key, hours: g.Sum(wi => wi.HoursWorked)));
-        }
-
-        // När ett nytt projekt skapas i ProjectsManager
-        private async Task HandleCreateProject(string projectName)
-        {
-            await TimeService.CreateProjectAsync(projectName, _currentUserId);
             _projects = await TimeService.GetProjectsAsync(_currentUserId);
             StateHasChanged();
         }
 
-        // När användaren vill ta bort ett projekt
-        private async Task HandleDeleteProject(int projectId)
+        private void HandleMonthChanged((int Year, int Month) newDate)
         {
-            if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker att du vill radera projektet?"))
-            {
-                await TimeService.DeleteProjectAsync(projectId);
-                _projects = await TimeService.GetProjectsAsync(_currentUserId);
-                StateHasChanged();
-            }
+            _currentYear = newDate.Year;
+            _currentMonth = newDate.Month;
+            _selectedDay = DateTime.MinValue;
+            StateHasChanged();
         }
     }
 }

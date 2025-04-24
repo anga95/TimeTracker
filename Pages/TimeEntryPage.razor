@@ -2,25 +2,14 @@
 @page "/"
 @using TimeTracker.Pages.Components
 
-<div class="row mb-4">
-  <div class="col">
-    <button class="btn btn-secondary me-2" @onclick="PrevMonth">« Föregående</button>
-    <strong>@currentMonthName @_currentYear</strong>
-    <button class="btn btn-secondary ms-2" @onclick="NextMonth">Nästa »</button>
-  </div>
-</div>
-
 <!-- Kalendergrid -->
 <CalendarGrid
-  GridStart="_gridStart"
-  TotalRows="_totalRows"
-  CurrentMonth="_currentMonth"
-  Today="_today"
-  SelectedDay="_selectedDay"
-  GetTotalHours="GetTotalHours"
-  GetProjectSummary="GetProjectSummary"
-  DayClicked="SelectDay" />
-
+  Year="_currentYear"
+  Month="_currentMonth"
+  @bind-SelectedDay="_selectedDay"
+  OnMonthDataLoaded="HandleMonthDataLoaded"
+  OnMonthChanged="HandleMonthChanged"
+  @ref="_calendarGrid" />
 
 <!-- Detaljvy för vald dag -->
 @if (_selectedDay != DateTime.MinValue)
@@ -31,8 +20,7 @@
     Projects="_projects"
     @bind-WorkItem="_newWorkItem"
     IsAuthenticated="!string.IsNullOrEmpty(_currentUserId)"
-    OnAdd="HandleSubmit"
-    OnDelete="Delete"
-    OnCreateProject="HandleCreateProject"
-    OnDeleteProject="HandleDeleteProject" />
+    OnAdd="AddWorkItem"
+    OnDelete="DeleteWorkItem"
+    OnProjectsChanged="RefreshProjects" />
 }

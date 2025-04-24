@@ -1,4 +1,13 @@
 ﻿@using TimeTracker.Models
+@using System.Security.Claims
+@using TimeTracker.Services
+@inject ITimeTrackingService TimeService
+@inject AuthenticationStateProvider AuthProvider
+
+<MonthNavigation 
+    Year="Year" 
+    Month="Month" 
+    OnNavigate="HandleMonthNavigation" />
 
 <div class="row text-center fw-bold">
   @foreach (var h in WeekdayHeaders)
@@ -6,60 +15,161 @@
     <div class="col border">@h</div>
   }
 </div>
-@for (int r = 0; r < TotalRows; r++)
+
+@if (_isLoading)
 {
-  <div class="row">
-    @for (int c = 0; c < 7; c++)
-    {
-      var day = GridStart.AddDays(r * 7 + c);
-      bool inMonth    = day.Month == CurrentMonth;
-      var totalHours  = GetTotalHours(day);
-      bool isToday    = day.Date == Today.Date;
-      bool isSelected = day.Date == SelectedDay.Date;
-
-      // Bygg upp CSS-klasser dynamiskt
-      var classes = new List<string> { "col", "border", "p-2", "text-start" };
-      if (!inMonth)             classes.Add("bg-light");
-      else if (isToday)         classes.Add("bg-info bg-opacity-25");
-      else if (totalHours > 0)  classes.Add("bg-success bg-opacity-10");
-      if (isSelected)
-      {
-        classes.Add("border-2");
-        classes.Add("border-dark");
-      }
-
-      <div class="@string.Join(" ", classes)"
-           style="cursor:pointer; height:120px; overflow:hidden;"
-           @onclick="() => DayClicked.InvokeAsync(day)">
-        <div><strong class="@(isToday ? "text-info" : "")">@day.Day</strong></div>
-        @if (totalHours > 0)
-        {
-          <div><strong>@totalHours h</strong></div>
-          <ul class="list-unstyled small mb-0" style="line-height:1.1;">
-            @foreach (var (proj, hrs) in GetProjectSummary(day).Take(3))
-            {
-              <li>@proj: @hrs h</li>
-            }
-            @if (GetProjectSummary(day).Count() > 3)
-            {
-              <li>…</li>
-            }
-          </ul>
-        }
-      </div>
-    }
+  <div class="text-center my-4">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Laddar...</span>
+    </div>
   </div>
+}
+else
+{
+  @for (int r = 0; r < _totalRows; r++)
+  {
+    <div class="row">
+      @for (int c = 0; c < 7; c++)
+      {
+        var day = _gridStart.AddDays(r * 7 + c);
+        bool inMonth = day.Month == Month;
+        var totalHours = CalculateTotalHours(day);
+        bool isToday = day.Date == DateTime.Today;
+        bool isSelected = day.Date == SelectedDay.Date;
+
+        // build CSS classes dynamically
+        var classes = new List<string> { "col", "border", "p-2", "text-start" };
+        if (!inMonth) classes.Add("bg-light");
+        else if (isToday) classes.Add("bg-info bg-opacity-25");
+        else if (totalHours > 0) classes.Add("bg-success bg-opacity-10");
+        if (isSelected)
+        {
+          classes.Add("border-2");
+          classes.Add("border-dark");
+        }
+
+        <div class="@string.Join(" ", classes)"
+             style="cursor:pointer; height:120px; overflow:hidden;"
+             @onclick="() => HandleDayClick(day)">
+          <div><strong class="@(isToday ? "text-info" : "")">@day.Day</strong></div>
+          @if (totalHours > 0)
+          {
+            <div><strong>@totalHours h</strong></div>
+            <ul class="list-unstyled small mb-0" style="line-height:1.1;">
+              @foreach (var (proj, hrs) in CalculateProjectSummary(day).Take(3))
+              {
+                <li>@proj: @hrs h</li>
+              }
+              @if (CalculateProjectSummary(day).Count() > 3)
+              {
+                <li>…</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    </div>
+  }
 }
 
 @code {
-  [Parameter] public DateTime GridStart { get; set; }
-  [Parameter] public int TotalRows { get; set; }
-  [Parameter] public int CurrentMonth { get; set; }
-  [Parameter] public DateTime Today { get; set; }
+  [Parameter] public int Year { get; set; }
+  [Parameter] public int Month { get; set; }
   [Parameter] public DateTime SelectedDay { get; set; }
-  [Parameter] public Func<DateTime, double> GetTotalHours { get; set; } = _ => 0;
-  [Parameter] public Func<DateTime, IEnumerable<(string project, double hours)>> GetProjectSummary { get; set; } = _ => Enumerable.Empty<(string, double)>();
-  [Parameter] public EventCallback<DateTime> DayClicked { get; set; }
+  [Parameter] public EventCallback<DateTime> SelectedDayChanged { get; set; }
+  [Parameter] public EventCallback<List<WorkDay>> OnMonthDataLoaded { get; set; }
+  [Parameter] public EventCallback<(int Year, int Month)> OnMonthChanged { get; set; }
+
+  private List<WorkDay> _monthWorkDays = new();
+  private DateTime _gridStart;
+  private int _totalRows;
+  private string _currentUserId = "";
+  private bool _isLoading = false;
+  private int _lastLoadedYear;
+  private int _lastLoadedMonth;
+
 
   private string[] WeekdayHeaders => new[] { "Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön" };
+
+  protected override async Task OnInitializedAsync()
+  {
+    var authState = await AuthProvider.GetAuthenticationStateAsync();
+    _currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+  }
+
+  protected override async Task OnParametersSetAsync()
+  {
+    if (Year > 0 && Month > 0 && 
+        (Year != _lastLoadedYear || Month != _lastLoadedMonth))
+    {
+      _lastLoadedYear = Year;
+      _lastLoadedMonth = Month;
+      await LoadMonthDataAsync();
+    }
+  }
+
+
+  private async Task HandleMonthNavigation((int Year, int Month) newDate)
+  {
+    await OnMonthChanged.InvokeAsync(newDate);
+  }
+
+  private async Task LoadMonthDataAsync()
+  {
+    _isLoading = true;
+    StateHasChanged();
+
+    try
+    {
+      // Use the new method that only gets data for the current month
+      _monthWorkDays = await TimeService.GetWorkDaysForMonthAsync(_currentUserId, Year, Month);
+
+      // Calculate grid parameters
+      var first = new DateTime(Year, Month, 1);
+      int dow = (int)first.DayOfWeek;
+      if (dow == 0) dow = 7; // Adjust for Sunday
+      var offset = dow - 1;
+      _gridStart = first.AddDays(-offset);
+
+      int days = DateTime.DaysInMonth(Year, Month);
+      int cells = offset + days;
+      _totalRows = (int)Math.Ceiling(cells / 7.0);
+
+      await OnMonthDataLoaded.InvokeAsync(_monthWorkDays);
+    }
+    finally
+    {
+      _isLoading = false;
+      StateHasChanged();
+    }
+  }
+
+  private async Task HandleDayClick(DateTime day)
+  {
+    SelectedDay = day;
+    await SelectedDayChanged.InvokeAsync(day);
+  }
+
+  private double CalculateTotalHours(DateTime date) =>
+    _monthWorkDays.FirstOrDefault(w => w.Date.Date == date.Date)?.WorkItems.Sum(i => i.HoursWorked) ?? 0;
+
+  private IEnumerable<(string projectName, double hours)> CalculateProjectSummary(DateTime day)
+  {
+    var workDay = _monthWorkDays.FirstOrDefault(w => w.Date.Date == day.Date);
+    if (workDay == null)
+      return Enumerable.Empty<(string, double)>();
+
+    return workDay.WorkItems
+      .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
+      .Select(g => (projectName: g.Key, hours: g.Sum(wi => wi.HoursWorked)));
+  }
+
+  // Public method to force refresh
+  public async Task RefreshDataAsync()
+  {
+    // Reset tracked state to force reload
+    _lastLoadedYear = 0;
+    _lastLoadedMonth = 0;
+    await LoadMonthDataAsync();
+  }
 }

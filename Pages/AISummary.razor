@@ -91,14 +91,7 @@
         _isLoading = true;
         StateHasChanged();
 
-        // Hämta alla tidrapporterade dagar för aktuell användare
-        var allDays = await TimeService.GetWorkDaysAsync(_currentUserId);
-
-        // Filtrera ut de dagar som är inom de senaste 7 dagarna
-        DateTime cutoff = DateTime.Today.AddDays(-7);
-        var last7Days = allDays.Where(d => d.Date.Date >= cutoff)
-                               .OrderBy(d => d.Date)
-                               .ToList();
+        var last7Days = await TimeService.GetWorkDaysForLastNDaysAsync(_currentUserId, 7);
 
         if (!last7Days.Any())
         {

@@ -1,17 +1,21 @@
-﻿@using TimeTracker.Models
+﻿@using System.Security.Claims
+@using TimeTracker.Models
 @using Microsoft.AspNetCore.Components
+@using TimeTracker.Services
 @inject IJSRuntime JSRuntime
+@inject ITimeTrackingService TimeService
+@inject AuthenticationStateProvider AuthProvider
 
 <div class="input-group">
-<select class="form-select"
-        value="@SelectedProjectId"
-        @onchange="OnSelectionChanged">
-  <option value="0">-- Välj projekt --</option>
-  @foreach (var p in Projects)
-  {
-    <option value="@p.Id">@p.Name</option>
-  }
-</select>
+  <select class="form-select"
+          value="@SelectedProjectId"
+          @onchange="OnSelectionChanged">
+    <option value="0">-- Välj projekt --</option>
+    @foreach (var p in Projects)
+    {
+      <option value="@p.Id">@p.Name</option>
+    }
+  </select>
 
   <button class="btn btn-outline-secondary"
           type="button"
@@ -22,7 +26,7 @@
   <button class="btn btn-outline-danger"
           type="button"
           disabled="@(SelectedProjectId == 0)"
-          @onclick="ConfirmDelete">
+          @onclick="DeleteProjectWithConfirmation">
     <i class="bi bi-trash"></i>
   </button>
 </div>
@@ -40,13 +44,15 @@
         <div class="modal-body">
           <InputText @bind-Value="_newProjectName"
                      class="form-control"
-                     placeholder="Projektnamn" />
+                     placeholder="Projektnamn"/>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary"
-                  @onclick="CloseModal">Avbryt</button>
+                  @onclick="CloseModal">Avbryt
+          </button>
           <button class="btn btn-primary"
-                  @onclick="Create">Lägg till</button>
+                  @onclick="CreateProject">Lägg till
+          </button>
         </div>
       </div>
     </div>
@@ -60,19 +66,36 @@
   [Parameter] public int SelectedProjectId { get; set; }
   [Parameter] public EventCallback<int> SelectedProjectIdChanged { get; set; }
 
-  [Parameter] public EventCallback<string> OnCreateProject { get; set; }
-  [Parameter] public EventCallback<int>    OnDeleteProject { get; set; }
+  [Parameter] public EventCallback OnProjectChanged { get; set; }
+
 
   private bool _showModal;
   private string _newProjectName = string.Empty;
+  private string _currentUserId = string.Empty;
 
-  async Task Create()
+  protected override async Task OnInitializedAsync()
   {
-    if (!string.IsNullOrWhiteSpace(_newProjectName))
+    var authState = await AuthProvider.GetAuthenticationStateAsync();
+    _currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+  }
+
+
+  async Task CreateProject()
+  {
+    if (string.IsNullOrWhiteSpace(_newProjectName))
+      return;
+
+    try
     {
-      await OnCreateProject.InvokeAsync(_newProjectName);
-      _newProjectName = "";
+      await TimeService.CreateProjectAsync(_newProjectName, _currentUserId);
+      await OnProjectChanged.InvokeAsync();
+
+      _newProjectName = string.Empty;
       _showModal = false;
+    }
+    catch (Exception ex)
+    {
+      await JSRuntime.InvokeVoidAsync("alert", $"Fel vid skapande av projekt: {ex.Message}");
     }
   }
 
@@ -82,21 +105,33 @@
     _newProjectName = "";
   }
 
-  async Task ConfirmDelete()
+  async Task DeleteProjectWithConfirmation()
   {
-    if (await JSRuntime.InvokeAsync<bool>("confirm", "Radera projekt?"))
+    if (SelectedProjectId == 0)
+      return;
+
+    if (await JSRuntime.InvokeAsync<bool>("confirm", "Radera projektet?"))
     {
-      await OnDeleteProject.InvokeAsync(SelectedProjectId);
-      await SelectedProjectIdChanged.InvokeAsync(0);
+      try
+      {
+        await TimeService.DeleteProjectAsync(SelectedProjectId);
+        await SelectedProjectIdChanged.InvokeAsync(0);
+        await OnProjectChanged.InvokeAsync();
+      }
+      catch (Exception ex)
+      {
+        await JSRuntime.InvokeVoidAsync("alert", $"Fel vid radering av projekt: {ex.Message}");
+      }
     }
   }
 
   private async Task OnSelectionChanged(ChangeEventArgs e)
   {
-    if (int.TryParse(e.Value?.ToString(), out int newValue ))
+    if (int.TryParse(e.Value?.ToString(), out int newValue))
     {
       SelectedProjectId = newValue;
       await SelectedProjectIdChanged.InvokeAsync(newValue);
     }
   }
+
 }

@@ -1,0 +1,54 @@
+﻿@using System.Globalization
+
+<div class="row mb-4">
+  <div class="col">
+    <button class="btn btn-secondary me-2" @onclick="PrevMonthClicked">« Föregående</button>
+    <strong>@MonthName @Year</strong>
+    <button class="btn btn-secondary ms-2" @onclick="NextMonthClicked">Nästa »</button>
+  </div>
+</div>
+
+@code {
+    [Parameter] public int Month { get; set; }
+    [Parameter] public int Year { get; set; }
+    [Parameter] public EventCallback<(int Year, int Month)> OnNavigate { get; set; }
+
+    private string MonthName => 
+        CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Month);
+
+    private async Task PrevMonthClicked()
+    {
+        int newMonth, newYear;
+        
+        if (Month == 1)
+        {
+            newMonth = 12;
+            newYear = Year - 1;
+        }
+        else
+        {
+            newMonth = Month - 1;
+            newYear = Year;
+        }
+        
+        await OnNavigate.InvokeAsync((newYear, newMonth));
+    }
+
+    private async Task NextMonthClicked()
+    {
+        int newMonth, newYear;
+        
+        if (Month == 12)
+        {
+            newMonth = 1;
+            newYear = Year + 1;
+        }
+        else
+        {
+            newMonth = Month + 1;
+            newYear = Year;
+        }
+        
+        await OnNavigate.InvokeAsync((newYear, newMonth));
+    }
+}

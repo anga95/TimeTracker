@@ -10,7 +10,7 @@ namespace TimeTracker.Services
         private readonly IDbContextFactory<TimeTrackerContext> _contextFactory;
         private readonly IAiService _aiService;
         private readonly AiSummaryStateService _summaryState;
-        
+
         public TimeTrackingService(
             IDbContextFactory<TimeTrackerContext> contextFactory,
             IAiService aiService,
@@ -54,21 +54,63 @@ namespace TimeTracker.Services
                 return DemoData.GetDemoWorkDays();
             }
 
+            // Default to last 90 days to prevent excessive data loading
+            var threeMonthsAgo = DateTime.Today.AddDays(-90);
+    
             await using var context = _contextFactory.CreateDbContext();
-            var allDays = await context.WorkDays
-                .Include(d => d.WorkItems)
-                    .ThenInclude(wi => wi.Project)
+            var filteredDays = await context.WorkDays
+                .Where(d => d.Date >= threeMonthsAgo)
+                .Where(d => d.WorkItems.Any(wi => wi.UserId == userId))
+                .Include(d => d.WorkItems.Where(wi => wi.UserId == userId))
+                .ThenInclude(wi => wi.Project)
                 .OrderByDescending(d => d.Date)
                 .ToListAsync();
 
-            var filteredDays = allDays
-                .Select(day =>
-                {
-                    day.WorkItems = day.WorkItems.Where(w => w.UserId == userId).ToList();
-                    return day;
-                })
-                .Where(day => day.WorkItems.Any())
-                .ToList();
+            return filteredDays;
+        }
+
+
+        public async Task<List<WorkDay>> GetWorkDaysForMonthAsync(string userId, int year, int month)
+        {
+            if (string.IsNullOrEmpty(userId))
+            {
+                var demo = DemoData.GetDemoWorkDays();
+                return demo.Where(d => d.Date.Year == year && d.Date.Month == month).ToList();
+            }
+
+            var firstDay = new DateTime(year, month, 1);
+            var lastDay = firstDay.AddMonths(1).AddDays(-1);
+
+            await using var context = _contextFactory.CreateDbContext();
+            var filteredDays = await context.WorkDays
+                .Where(d => d.Date >= firstDay && d.Date <= lastDay)
+                .Where(d => d.WorkItems.Any(wi => wi.UserId == userId))
+                .Include(d => d.WorkItems.Where(wi => wi.UserId == userId))
+                .ThenInclude(wi => wi.Project)
+                .OrderByDescending(d => d.Date)
+                .ToListAsync();
+
+            return filteredDays;
+        }
+        
+        public async Task<List<WorkDay>> GetWorkDaysForLastNDaysAsync(string userId, int days)
+        {
+            // If no user id is provided, return demo data
+            DateTime cutoff = DateTime.Today.AddDays(-days);
+            if (string.IsNullOrEmpty(userId))
+            {
+                var demo = DemoData.GetDemoWorkDays();
+                return demo.Where(d => d.Date >= cutoff).ToList();
+            }
+
+            await using var context = _contextFactory.CreateDbContext();
+            var filteredDays = await context.WorkDays
+                .Where(d => d.Date >= cutoff)
+                .Where(d => d.WorkItems.Any(wi => wi.UserId == userId))
+                .Include(d => d.WorkItems.Where(wi => wi.UserId == userId))
+                .ThenInclude(wi => wi.Project)
+                .OrderByDescending(d => d.Date)
+                .ToListAsync();
 
             return filteredDays;
         }
@@ -112,7 +154,7 @@ namespace TimeTracker.Services
             context.Projects.Add(project);
             await context.SaveChangesAsync();
         }
-        
+
         // Create a method to Delete Projects Async
         public async Task DeleteProjectAsync(int projectId)
         {
@@ -162,6 +204,7 @@ namespace TimeTracker.Services
         {
             await _aiService.ClearCachedSummaryAsync(userId);
         }
+
         
-    }
+}
 }
