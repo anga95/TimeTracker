@@ -4,7 +4,7 @@ namespace TimeTracker.Services;
 
 public interface ITimeTrackingService
 {
-    Task AddWorkItemAsync(WorkItem item, string userId);
+    Task AddTimeEntryAsync(TimeEntry item, string userId);
     Task<List<WorkDay>> GetWorkDaysAsync(string userId);
     Task<double> GetRoundedDailyTotalAsync(DateTime date, string userId);
     Task<List<Project>> GetProjectsAsync(string userId);
@@ -14,5 +14,5 @@ public interface ITimeTrackingService
 
     Task CreateProjectAsync(string projectName, string userId);
     Task DeleteProjectAsync(int projectId);
-    Task DeleteWorkItemAsync(int workItemId);
+    Task DeleteTimeEntryAsync(int timeEntryId);
 }

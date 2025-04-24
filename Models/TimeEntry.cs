@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TimeTracker.Models;
 
-public class WorkItem
+public class TimeEntry
 {
     public int Id { get; set; }
     

@@ -21,14 +21,14 @@ namespace TimeTracker.Services
             _summaryState = summaryState;
         }
 
-        public async Task AddWorkItemAsync(WorkItem item, string userId)
+        public async Task AddTimeEntryAsync(TimeEntry item, string userId)
         {
             await using var context = _contextFactory.CreateDbContext();
 
             item.UserId = userId;
 
             var workDay = await context.WorkDays
-                .Include(d => d.WorkItems)
+                .Include(d => d.TimeEntries)
                 .FirstOrDefaultAsync(d => d.Date.Date == item.WorkDate.Date);
 
             if (workDay == null)
@@ -39,7 +39,7 @@ namespace TimeTracker.Services
             }
 
             item.WorkDayId = workDay.Id;
-            workDay.WorkItems.Add(item);
+            workDay.TimeEntries.Add(item);
 
             await context.SaveChangesAsync();
             await InvalidateAiSummaryAsync(userId);
@@ -60,8 +60,8 @@ namespace TimeTracker.Services
             await using var context = _contextFactory.CreateDbContext();
             var filteredDays = await context.WorkDays
                 .Where(d => d.Date >= threeMonthsAgo)
-                .Where(d => d.WorkItems.Any(wi => wi.UserId == userId))
-                .Include(d => d.WorkItems.Where(wi => wi.UserId == userId))
+                .Where(d => d.TimeEntries.Any(wi => wi.UserId == userId))
+                .Include(d => d.TimeEntries.Where(wi => wi.UserId == userId))
                 .ThenInclude(wi => wi.Project)
                 .OrderByDescending(d => d.Date)
                 .ToListAsync();
@@ -84,8 +84,8 @@ namespace TimeTracker.Services
             await using var context = _contextFactory.CreateDbContext();
             var filteredDays = await context.WorkDays
                 .Where(d => d.Date >= firstDay && d.Date <= lastDay)
-                .Where(d => d.WorkItems.Any(wi => wi.UserId == userId))
-                .Include(d => d.WorkItems.Where(wi => wi.UserId == userId))
+                .Where(d => d.TimeEntries.Any(wi => wi.UserId == userId))
+                .Include(d => d.TimeEntries.Where(wi => wi.UserId == userId))
                 .ThenInclude(wi => wi.Project)
                 .OrderByDescending(d => d.Date)
                 .ToListAsync();
@@ -106,8 +106,8 @@ namespace TimeTracker.Services
             await using var context = _contextFactory.CreateDbContext();
             var filteredDays = await context.WorkDays
                 .Where(d => d.Date >= cutoff)
-                .Where(d => d.WorkItems.Any(wi => wi.UserId == userId))
-                .Include(d => d.WorkItems.Where(wi => wi.UserId == userId))
+                .Where(d => d.TimeEntries.Any(wi => wi.UserId == userId))
+                .Include(d => d.TimeEntries.Where(wi => wi.UserId == userId))
                 .ThenInclude(wi => wi.Project)
                 .OrderByDescending(d => d.Date)
                 .ToListAsync();
@@ -120,12 +120,12 @@ namespace TimeTracker.Services
             await using var context = _contextFactory.CreateDbContext();
 
             var day = await context.WorkDays
-                .Include(d => d.WorkItems)
+                .Include(d => d.TimeEntries)
                 .FirstOrDefaultAsync(d => d.Date.Date == date.Date);
 
             if (day == null) return 0;
 
-            var totalMinutes = day.WorkItems
+            var totalMinutes = day.TimeEntries
                 .Where(w => w.UserId == userId)
                 .Sum(w => w.DurationMinutes);
             var rounded = Math.Ceiling(totalMinutes / 30) * 30;
@@ -160,7 +160,7 @@ namespace TimeTracker.Services
         {
             await using var context = _contextFactory.CreateDbContext();
             var project = await context.Projects
-                .Include(p => p.WorkItems)
+                .Include(p => p.TimeEntries)
                 .FirstOrDefaultAsync(p => p.Id == projectId);
             if (project == null)
                 return;
@@ -169,26 +169,28 @@ namespace TimeTracker.Services
             await context.SaveChangesAsync();
         }
 
-        public async Task DeleteWorkItemAsync(int workItemId)
+        public async Task DeleteTimeEntryAsync(int TimeEntryId)
         {
             await using var context = _contextFactory.CreateDbContext();
 
-            var item = await context.WorkItems
+            var item = await context.TimeEntries
+
                 .Include(wi => wi.WorkDay)
-                .FirstOrDefaultAsync(x => x.Id == workItemId);
+                .FirstOrDefaultAsync(x => x.Id == TimeEntryId);
             if (item == null)
                 return;
 
-            context.WorkItems.Remove(item);
+            context.TimeEntries
+                .Remove(item);
             await context.SaveChangesAsync();
 
             var day = item.WorkDay;
             if (day != null)
             {
                 var updatedDay = await context.WorkDays
-                    .Include(d => d.WorkItems)
+                    .Include(d => d.TimeEntries)
                     .FirstOrDefaultAsync(d => d.Id == day.Id);
-                if (updatedDay != null && !updatedDay.WorkItems.Any())
+                if (updatedDay != null && !updatedDay.TimeEntries.Any())
                 {
                     context.WorkDays.Remove(updatedDay);
                     await context.SaveChangesAsync();

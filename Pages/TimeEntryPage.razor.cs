@@ -20,8 +20,8 @@ namespace TimeTracker.Pages
         private List<Project>? _projects = new List<Project>();
         private List<WorkDay> _monthWorkDays = new();
         private DateTime _selectedDay = DateTime.MinValue;
-        private List<WorkItem>? _dayWorkItems;
-        private WorkItem _newWorkItem = new() { HoursWorked = 0 };
+        private List<TimeEntry>? _dayTimeEntry;
+        private TimeEntry _newTimeEntry = new() { HoursWorked = 0 };
 
         private int _currentYear;
         private int _currentMonth;
@@ -39,7 +39,7 @@ namespace TimeTracker.Pages
             
             _projects = await TimeService.GetProjectsAsync(_currentUserId);
             
-            _newWorkItem.WorkDate = today;
+            _newTimeEntry.WorkDate = today;
         }
 
         // ---------- Eventhandler for CalendarGrid ----------------------------
@@ -50,7 +50,7 @@ namespace TimeTracker.Pages
             
             if (_selectedDay != DateTime.MinValue)
             {
-                UpdateDayWorkItems();
+                UpdateDayTimeEntries();
             }
         }
         
@@ -65,7 +65,7 @@ namespace TimeTracker.Pages
         private void HandleDaySelected(DateTime day)
         {
             _selectedDay = day;
-            UpdateDayWorkItems();
+            UpdateDayTimeEntries();
             StateHasChanged();
         }
 
@@ -79,20 +79,20 @@ namespace TimeTracker.Pages
             }
         }
 
-        private void HandleWorkItemsChanged(List<WorkItem> items)
+        private void HandleTimeEntriesChanged(List<TimeEntry> items)
         {
-            _dayWorkItems = items;
+            _dayTimeEntry = items;
             StateHasChanged();
         }
 
         // ---------- Helpers ----------------------------------------------
 
-        private void UpdateDayWorkItems()
+        private void UpdateDayTimeEntries()
         {
-            _dayWorkItems = _monthWorkDays
+            _dayTimeEntry = _monthWorkDays
                 .FirstOrDefault(w => w.Date.Date == _selectedDay.Date)?
-                .WorkItems.ToList()
-                ?? new List<WorkItem>();
+                .TimeEntries.ToList()
+                ?? new List<TimeEntry>();
         }
     }
 }

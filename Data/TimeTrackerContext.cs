@@ -10,7 +10,7 @@ public class TimeTrackerContext : IdentityDbContext
     : base(options) { }
 
     public DbSet<WorkDay> WorkDays { get; set; }
-    public DbSet<WorkItem> WorkItems { get; set; }
+    public DbSet<TimeEntry> TimeEntries { get; set; }
     public DbSet<Project> Projects { get; set; }
     public DbSet<AiUsageLog> AiUsageLogs { get; set; }
     

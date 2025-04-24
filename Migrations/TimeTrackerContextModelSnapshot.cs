@@ -22,30 +22,6 @@ namespace TimeTracker.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("AISummary", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Summary")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AISummaries");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -248,6 +224,30 @@ namespace TimeTracker.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("TimeTracker.Models.AiSummary", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AiSummaries");
+                });
+
             modelBuilder.Entity("TimeTracker.Models.AiUsageLog", b =>
                 {
                     b.Property<int>("Id")
@@ -287,23 +287,7 @@ namespace TimeTracker.Migrations
                     b.ToTable("Projects");
                 });
 
-            modelBuilder.Entity("TimeTracker.Models.WorkDay", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("WorkDays");
-                });
-
-            modelBuilder.Entity("TimeTracker.Models.WorkItem", b =>
+            modelBuilder.Entity("TimeTracker.Models.TimeEntry", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -335,7 +319,23 @@ namespace TimeTracker.Migrations
 
                     b.HasIndex("WorkDayId");
 
-                    b.ToTable("WorkItems");
+                    b.ToTable("TimeEntries");
+                });
+
+            modelBuilder.Entity("TimeTracker.Models.WorkDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WorkDays");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -389,16 +389,16 @@ namespace TimeTracker.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("TimeTracker.Models.WorkItem", b =>
+            modelBuilder.Entity("TimeTracker.Models.TimeEntry", b =>
                 {
                     b.HasOne("TimeTracker.Models.Project", "Project")
-                        .WithMany("WorkItems")
+                        .WithMany("TimeEntries")
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("TimeTracker.Models.WorkDay", "WorkDay")
-                        .WithMany("WorkItems")
+                        .WithMany("TimeEntries")
                         .HasForeignKey("WorkDayId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -410,12 +410,12 @@ namespace TimeTracker.Migrations
 
             modelBuilder.Entity("TimeTracker.Models.Project", b =>
                 {
-                    b.Navigation("WorkItems");
+                    b.Navigation("TimeEntries");
                 });
 
             modelBuilder.Entity("TimeTracker.Models.WorkDay", b =>
                 {
-                    b.Navigation("WorkItems");
+                    b.Navigation("TimeEntries");
                 });
 #pragma warning restore 612, 618
         }

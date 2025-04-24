@@ -21,11 +21,11 @@ namespace TimeTracker.Demo
                 {
                     Id = 1,
                     Date = DateTime.Today.AddDays(-1),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 1, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 3, WorkDate = DateTime.Today.AddDays(-1), Comment = "Designade en futuristisk användarupplevelse med neonfärger.", UserId = "demo" },
-                        new WorkItem { Id = 2, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 2.5, WorkDate = DateTime.Today.AddDays(-1), Comment = "Testade en AI-assistent som pratade med enhörningar.", UserId = "demo" },
-                        new WorkItem { Id = 3, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 2.5, WorkDate = DateTime.Today.AddDays(-1), Comment = "Skrev en poetisk dokumentation.", UserId = "demo" }
+                        new TimeEntry { Id = 1, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 3, WorkDate = DateTime.Today.AddDays(-1), Comment = "Designade en futuristisk användarupplevelse med neonfärger.", UserId = "demo" },
+                        new TimeEntry { Id = 2, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 2.5, WorkDate = DateTime.Today.AddDays(-1), Comment = "Testade en AI-assistent som pratade med enhörningar.", UserId = "demo" },
+                        new TimeEntry { Id = 3, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 2.5, WorkDate = DateTime.Today.AddDays(-1), Comment = "Skrev en poetisk dokumentation.", UserId = "demo" }
                     }
                 },
                 // Dag 2 med 2 uppdrag
@@ -33,10 +33,10 @@ namespace TimeTracker.Demo
                 {
                     Id = 2,
                     Date = DateTime.Today.AddDays(-2),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 4, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 4, WorkDate = DateTime.Today.AddDays(-2), Comment = "Experimenterade med hologram och 3D-effekter.", UserId = "demo" },
-                        new WorkItem { Id = 5, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 2, WorkDate = DateTime.Today.AddDays(-2), Comment = "Införde interaktiva easter eggs.", UserId = "demo" }
+                        new TimeEntry { Id = 4, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 4, WorkDate = DateTime.Today.AddDays(-2), Comment = "Experimenterade med hologram och 3D-effekter.", UserId = "demo" },
+                        new TimeEntry { Id = 5, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 2, WorkDate = DateTime.Today.AddDays(-2), Comment = "Införde interaktiva easter eggs.", UserId = "demo" }
                     }
                 },
                 // Dag 3 med 2 uppdrag
@@ -44,10 +44,10 @@ namespace TimeTracker.Demo
                 {
                     Id = 3,
                     Date = DateTime.Today.AddDays(-3),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 6, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 5, WorkDate = DateTime.Today.AddDays(-3), Comment = "Kodade en spelifierad tidrapportering med poängsystem.", UserId = "demo" },
-                        new WorkItem { Id = 7, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 2, WorkDate = DateTime.Today.AddDays(-3), Comment = "Skapade en AI-genererad kommentar med oväntad twist.", UserId = "demo" }
+                        new TimeEntry { Id = 6, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 5, WorkDate = DateTime.Today.AddDays(-3), Comment = "Kodade en spelifierad tidrapportering med poängsystem.", UserId = "demo" },
+                        new TimeEntry { Id = 7, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 2, WorkDate = DateTime.Today.AddDays(-3), Comment = "Skapade en AI-genererad kommentar med oväntad twist.", UserId = "demo" }
                     }
                 },
                 // Dag 4 med 2 uppdrag
@@ -55,10 +55,10 @@ namespace TimeTracker.Demo
                 {
                     Id = 4,
                     Date = DateTime.Today.AddDays(-4),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 8, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 3.5, WorkDate = DateTime.Today.AddDays(-4), Comment = "Optimerade prestanda med magiska kodtrick.", UserId = "demo" },
-                        new WorkItem { Id = 9, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 1, WorkDate = DateTime.Today.AddDays(-4), Comment = "Fixade små buggar med humor.", UserId = "demo" }
+                        new TimeEntry { Id = 8, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 3.5, WorkDate = DateTime.Today.AddDays(-4), Comment = "Optimerade prestanda med magiska kodtrick.", UserId = "demo" },
+                        new TimeEntry { Id = 9, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 1, WorkDate = DateTime.Today.AddDays(-4), Comment = "Fixade små buggar med humor.", UserId = "demo" }
                     }
                 },
                 // Dag 5 med 3 uppdrag (Exempel: totalt 8 h)
@@ -66,11 +66,11 @@ namespace TimeTracker.Demo
                 {
                     Id = 5,
                     Date = DateTime.Today.AddDays(-5),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 10, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 4, WorkDate = DateTime.Today.AddDays(-5), Comment = "Experimenterade med UI-koncept inspirerade av naturen.", UserId = "demo" },
-                        new WorkItem { Id = 11, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 3, WorkDate = DateTime.Today.AddDays(-5), Comment = "Implementerade en spännande backend-funktion.", UserId = "demo" },
-                        new WorkItem { Id = 12, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 1, WorkDate = DateTime.Today.AddDays(-5), Comment = "Skrev en episk commit-historia.", UserId = "demo" }
+                        new TimeEntry { Id = 10, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 4, WorkDate = DateTime.Today.AddDays(-5), Comment = "Experimenterade med UI-koncept inspirerade av naturen.", UserId = "demo" },
+                        new TimeEntry { Id = 11, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 3, WorkDate = DateTime.Today.AddDays(-5), Comment = "Implementerade en spännande backend-funktion.", UserId = "demo" },
+                        new TimeEntry { Id = 12, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 1, WorkDate = DateTime.Today.AddDays(-5), Comment = "Skrev en episk commit-historia.", UserId = "demo" }
                     }
                 },
                 // Dag 6 med 2 uppdrag
@@ -78,10 +78,10 @@ namespace TimeTracker.Demo
                 {
                     Id = 6,
                     Date = DateTime.Today.AddDays(-6),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 13, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 4, WorkDate = DateTime.Today.AddDays(-6), Comment = "Testade integration med en fiktiv rymdstation.", UserId = "demo" },
-                        new WorkItem { Id = 14, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 5, WorkDate = DateTime.Today.AddDays(-6), Comment = "Kodade om tankar till text.", UserId = "demo" }
+                        new TimeEntry { Id = 13, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 4, WorkDate = DateTime.Today.AddDays(-6), Comment = "Testade integration med en fiktiv rymdstation.", UserId = "demo" },
+                        new TimeEntry { Id = 14, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 5, WorkDate = DateTime.Today.AddDays(-6), Comment = "Kodade om tankar till text.", UserId = "demo" }
                     }
                 },
                 // Dag 7 med 2 uppdrag
@@ -89,10 +89,10 @@ namespace TimeTracker.Demo
                 {
                     Id = 7,
                     Date = DateTime.Today.AddDays(-7),
-                    WorkItems = new List<WorkItem>
+                    TimeEntries = new List<TimeEntry>
                     {
-                        new WorkItem { Id = 15, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 4.5, WorkDate = DateTime.Today.AddDays(-7), Comment = "Skapade en interaktiv demo med animerade grafer.", UserId = "demo" },
-                        new WorkItem { Id = 16, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 3.5, WorkDate = DateTime.Today.AddDays(-7), Comment = "Förtrollade systemet med magiska AI-funktioner.", UserId = "demo" }
+                        new TimeEntry { Id = 15, ProjectId = 1, Project = demoProjects.First(), HoursWorked = 4.5, WorkDate = DateTime.Today.AddDays(-7), Comment = "Skapade en interaktiv demo med animerade grafer.", UserId = "demo" },
+                        new TimeEntry { Id = 16, ProjectId = 2, Project = demoProjects.Last(), HoursWorked = 3.5, WorkDate = DateTime.Today.AddDays(-7), Comment = "Förtrollade systemet med magiska AI-funktioner.", UserId = "demo" }
                     }
                 }
             };

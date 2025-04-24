@@ -18,11 +18,11 @@
   <DayDetail
     @key="_selectedDay.Date"
     Day="_selectedDay"
-    Items="_dayWorkItems"
+    Items="_dayTimeEntry"
     Projects="_projects"
-    @bind-WorkItem="_newWorkItem"
+    @bind-TimeEntry="_newTimeEntry"
     CurrentUserId="@_currentUserId"
     IsAuthenticated="!string.IsNullOrEmpty(_currentUserId)"
     OnRefreshRequested="RefreshCalendarData"
-    OnItemsChanged="HandleWorkItemsChanged" />
+    OnItemsChanged="HandleTimeEntriesChanged" />
 }

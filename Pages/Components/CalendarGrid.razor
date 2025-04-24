@@ -171,7 +171,7 @@ else
   }
 
   private double CalculateTotalHours(DateTime date) =>
-    _monthWorkDays.FirstOrDefault(w => w.Date.Date == date.Date)?.WorkItems.Sum(i => i.HoursWorked) ?? 0;
+    _monthWorkDays.FirstOrDefault(w => w.Date.Date == date.Date)?.TimeEntries.Sum(i => i.HoursWorked) ?? 0;
 
   private IEnumerable<(string projectName, double hours)> CalculateProjectSummary(DateTime day)
   {
@@ -179,7 +179,7 @@ else
     if (workDay == null)
       return Enumerable.Empty<(string, double)>();
 
-    return workDay.WorkItems
+    return workDay.TimeEntries
       .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt")
       .Select(g => (projectName: g.Key, hours: g.Sum(wi => wi.HoursWorked)));
   }

@@ -147,7 +147,7 @@
         {
             promptBuilder.AppendLine($"Datum: {day.Date:yyyy-MM-dd}");
 
-            var projectGroups = day.WorkItems
+            var projectGroups = day.TimeEntries
                 .GroupBy(wi => wi.Project?.Name ?? "Okänt projekt");
 
             foreach (var group in projectGroups)

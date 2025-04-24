@@ -15,22 +15,22 @@
                 <label>Projekt</label>
                 <ProjectSelector
                     Projects="Projects ?? new List<Project>()"
-                    @bind-SelectedProjectId="WorkItem.ProjectId"
+                    @bind-SelectedProjectId="TimeEntry.ProjectId"
                     OnProjectChanged="HandleProjectsChanged"/>
-                <ValidationMessage For="@(() => WorkItem.ProjectId)"/>
+                <ValidationMessage For="@(() => TimeEntry.ProjectId)"/>
             </div>
 
             <div class="col-md-2">
                 <label>Timmar</label>
-                <InputNumber @bind-Value="WorkItem.HoursWorked"
+                <InputNumber @bind-Value="TimeEntry.HoursWorked"
                              class="form-control"
                              disabled="@(!IsAuthenticated)"/>
-                <ValidationMessage For="@(() => WorkItem.HoursWorked)"/>
+                <ValidationMessage For="@(() => TimeEntry.HoursWorked)"/>
             </div>
 
             <div class="col-md-4">
                 <label>Kommentar</label>
-                <InputTextArea @bind-Value="WorkItem.Comment"
+                <InputTextArea @bind-Value="TimeEntry.Comment"
                                rows="1"
                                class="form-control"
                                disabled="@(!IsAuthenticated)"/>
@@ -70,7 +70,7 @@
                     <td>@item.Comment</td>
                     <td class="text-end">
                         <button class="btn btn-outline-danger btn-sm"
-                                @onclick="() => DeleteWorkItem(item.Id)"
+                                @onclick="() => DeleteTimeEntry(item.Id)"
                                 disabled="@(!IsAuthenticated)">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -90,63 +90,63 @@ else
     private EditContext? _editContext;
 
     [Parameter] public DateTime Day { get; set; }
-    [Parameter] public List<WorkItem>? Items { get; set; }
+    [Parameter] public List<TimeEntry>? Items { get; set; }
     [Parameter] public List<Project>? Projects { get; set; }
     [Parameter] public bool IsAuthenticated { get; set; }
     [Parameter] public string CurrentUserId { get; set; } = "";
 
-    [Parameter] public WorkItem WorkItem { get; set; } = new WorkItem();
-    [Parameter] public EventCallback<WorkItem> WorkItemChanged { get; set; }
+    [Parameter] public TimeEntry TimeEntry { get; set; } = new TimeEntry();
+    [Parameter] public EventCallback<TimeEntry> TimeEntryChanged { get; set; }
 
-    [Parameter] public EventCallback<List<WorkItem>> OnItemsChanged { get; set; }
+    [Parameter] public EventCallback<List<TimeEntry>> OnItemsChanged { get; set; }
     [Parameter] public EventCallback<int> OnRefreshRequested { get; set; }
 
     protected override void OnInitialized()
     {
-        _editContext = new EditContext(WorkItem);
+        _editContext = new EditContext(TimeEntry);
     }
 
     protected override void OnParametersSet()
     {
-        WorkItem.WorkDate = Day;
+        TimeEntry.WorkDate = Day;
         
-        if (_editContext == null || _editContext.Model != WorkItem)
+        if (_editContext == null || _editContext.Model != TimeEntry)
         {
-            _editContext = new EditContext(WorkItem);
+            _editContext = new EditContext(TimeEntry);
         }
     }
 
     private async Task HandleValidSubmit()
     {
-        if (WorkItem.ProjectId == 0) return;
+        if (TimeEntry.ProjectId == 0) return;
 
-        var workItemToSubmit = new WorkItem
+        var timeEntryToSubmit = new TimeEntry
         {
-            WorkDate = WorkItem.WorkDate,
-            ProjectId = WorkItem.ProjectId,
-            HoursWorked = WorkItem.HoursWorked,
-            Comment = WorkItem.Comment
+            WorkDate = TimeEntry.WorkDate,
+            ProjectId = TimeEntry.ProjectId,
+            HoursWorked = TimeEntry.HoursWorked,
+            Comment = TimeEntry.Comment
         };
 
-        await AddWorkItem(workItemToSubmit);
+        await AddTimeEntry(timeEntryToSubmit);
     }
     
     private void ResetForm()
     {
-        WorkItem.ProjectId = 0;
-        WorkItem.HoursWorked = 0;
-        WorkItem.Comment = null;
-        WorkItemChanged.InvokeAsync(WorkItem);
+        TimeEntry.ProjectId = 0;
+        TimeEntry.HoursWorked = 0;
+        TimeEntry.Comment = null;
+        TimeEntryChanged.InvokeAsync(TimeEntry);
     }
 
 
-    private async Task AddWorkItem(WorkItem workItem)
+    private async Task AddTimeEntry(TimeEntry timeEntry)
     {
-        if (workItem.ProjectId == 0) return;
+        if (timeEntry.ProjectId == 0) return;
 
         try
         {
-            await TimeService.AddWorkItemAsync(workItem, CurrentUserId);
+            await TimeService.AddTimeEntryAsync(timeEntry, CurrentUserId);
             await OnRefreshRequested.InvokeAsync(0);
 
             ResetForm();
@@ -157,13 +157,13 @@ else
         }
     }
 
-    private async Task DeleteWorkItem(int id)
+    private async Task DeleteTimeEntry(int id)
     {
         if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
         {
             try
             {
-                await TimeService.DeleteWorkItemAsync(id);
+                await TimeService.DeleteTimeEntryAsync(id);
                 await OnRefreshRequested.InvokeAsync(0);
             }
             catch (Exception ex)
