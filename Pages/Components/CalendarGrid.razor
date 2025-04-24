@@ -18,12 +18,14 @@
 
 @if (_isLoading)
 {
-  <div class="text-center my-4">
+  <div class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" 
+       style="background-color: rgba(255, 255, 255, 0.7); z-index: 1000;">
     <div class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Laddar...</span>
     </div>
   </div>
 }
+
 else
 {
   @for (int r = 0; r < _totalRows; r++)
@@ -79,6 +81,8 @@ else
   [Parameter] public EventCallback<DateTime> SelectedDayChanged { get; set; }
   [Parameter] public EventCallback<List<WorkDay>> OnMonthDataLoaded { get; set; }
   [Parameter] public EventCallback<(int Year, int Month)> OnMonthChanged { get; set; }
+  [Parameter] public EventCallback<DateTime> OnDaySelected { get; set; }
+
 
   private List<WorkDay> _monthWorkDays = new();
   private DateTime _gridStart;
@@ -148,6 +152,7 @@ else
   {
     SelectedDay = day;
     await SelectedDayChanged.InvokeAsync(day);
+    await OnDaySelected.InvokeAsync(day);
   }
 
   private double CalculateTotalHours(DateTime date) =>

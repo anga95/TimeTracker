@@ -36,6 +36,13 @@ namespace TimeTracker.Pages
             _currentYear = today.Year;
             _currentMonth = today.Month;
             _projects = await TimeService.GetProjectsAsync(_currentUserId);
+            
+            _selectedDay = today;
+            _projects = await TimeService.GetProjectsAsync(_currentUserId);
+            if (_newWorkItem != null)
+            {
+                _newWorkItem.WorkDate = today;
+            }
         }
 
         private void HandleMonthDataLoaded(List<WorkDay> workDays)
@@ -111,6 +118,13 @@ namespace TimeTracker.Pages
             _currentYear = newDate.Year;
             _currentMonth = newDate.Month;
             _selectedDay = DateTime.MinValue;
+            StateHasChanged();
+        }
+
+        private void HandleDaySelected(DateTime day)
+        {
+            _selectedDay = day;
+            UpdateDayWorkItems();
             StateHasChanged();
         }
     }
