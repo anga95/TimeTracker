@@ -64,52 +64,17 @@ namespace TimeTracker.Pages
                 ?? new List<WorkItem>();
         }
 
-        // ---------- inmatning -------------------------------------------------
-        private async Task AddWorkItem(WorkItem workItem)
+        private async Task RefreshCalendarData(int _)
         {
-            if (workItem == null || workItem.ProjectId == 0) return;
-
-            var currentDate = _selectedDay;
-
-            await TimeService.AddWorkItemAsync(workItem, _currentUserId);
-            
-            // Refresh the calendar data
             if (_calendarGrid != null)
             {
                 await _calendarGrid.RefreshDataAsync();
             }
-
-            // Reset the work item or create a new one
-            if (_newWorkItem == null)
-            {
-                _newWorkItem = new WorkItem { WorkDate = currentDate, HoursWorked = 0 };
-            }
-            else
-            {
-                // Just reset fields, keep the reference
-                _newWorkItem.ProjectId = 0;
-                _newWorkItem.HoursWorked = 0;
-                _newWorkItem.Comment = null;
-            }
         }
 
-        private async Task DeleteWorkItem(int id)
+        private void HandleWorkItemsChanged(List<WorkItem> items)
         {
-            if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
-            {
-                await TimeService.DeleteWorkItemAsync(id);
-                
-                // Refresh the calendar data
-                if (_calendarGrid != null)
-                {
-                    await _calendarGrid.RefreshDataAsync();
-                }
-            }
-        }
-
-        private async Task RefreshProjects()
-        {
-            _projects = await TimeService.GetProjectsAsync(_currentUserId);
+            _dayWorkItems = items;
             StateHasChanged();
         }
 

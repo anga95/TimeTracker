@@ -16,12 +16,13 @@
 @if (_selectedDay != DateTime.MinValue)
 {
   <DayDetail
+    @key="_selectedDay.Date"
     Day="_selectedDay"
     Items="_dayWorkItems"
     Projects="_projects"
     @bind-WorkItem="_newWorkItem"
+    CurrentUserId="@_currentUserId"
     IsAuthenticated="!string.IsNullOrEmpty(_currentUserId)"
-    OnAdd="AddWorkItem"
-    OnDelete="DeleteWorkItem"
-    OnProjectsChanged="RefreshProjects" />
+    OnRefreshRequested="RefreshCalendarData"
+    OnItemsChanged="HandleWorkItemsChanged" />
 }
