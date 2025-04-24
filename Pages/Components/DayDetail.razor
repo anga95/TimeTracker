@@ -6,179 +6,177 @@
 
 @if (_editContext != null)
 {
-  <EditForm EditContext="_editContext" OnValidSubmit="HandleValidSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="text-danger mb-3" />
+    <EditForm EditContext="_editContext" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator/>
+        <ValidationSummary class="text-danger mb-3"/>
 
-    <div class="row gy-3 gx-4 align-items-end">
-      <div class="col-md-4">
-        <label>Projekt</label>
-        <ProjectSelector
-          Projects="Projects ?? new List<Project>()"
-          @bind-SelectedProjectId="WorkItem.ProjectId"
-          OnProjectChanged="HandleProjectsChanged" />
-        <ValidationMessage For="@(() => WorkItem.ProjectId)" />
-      </div>
+        <div class="row gy-3 gx-4 align-items-end">
+            <div class="col-md-4">
+                <label>Projekt</label>
+                <ProjectSelector
+                    Projects="Projects ?? new List<Project>()"
+                    @bind-SelectedProjectId="WorkItem.ProjectId"
+                    OnProjectChanged="HandleProjectsChanged"/>
+                <ValidationMessage For="@(() => WorkItem.ProjectId)"/>
+            </div>
 
-      <div class="col-md-2">
-        <label>Timmar</label>
-        <InputNumber @bind-Value="WorkItem.HoursWorked"
-                     class="form-control"
-                     disabled="@(!IsAuthenticated)" />
-        <ValidationMessage For="@(() => WorkItem.HoursWorked)" />
-      </div>
+            <div class="col-md-2">
+                <label>Timmar</label>
+                <InputNumber @bind-Value="WorkItem.HoursWorked"
+                             class="form-control"
+                             disabled="@(!IsAuthenticated)"/>
+                <ValidationMessage For="@(() => WorkItem.HoursWorked)"/>
+            </div>
 
-      <div class="col-md-4">
-        <label>Kommentar</label>
-        <InputTextArea @bind-Value="WorkItem.Comment"
-                       rows="1"
-                       class="form-control"
-                       disabled="@(!IsAuthenticated)" />
-      </div>
+            <div class="col-md-4">
+                <label>Kommentar</label>
+                <InputTextArea @bind-Value="WorkItem.Comment"
+                               rows="1"
+                               class="form-control"
+                               disabled="@(!IsAuthenticated)"/>
+            </div>
 
-      <div class="col-md-2 text-end">
-        <button type="submit"
-                class="btn btn-primary"
-                disabled="@(!IsAuthenticated)">
-          Lägg till
-        </button>
-      </div>
-    </div>
-  </EditForm>
+            <div class="col-md-2 text-end">
+                <button type="submit"
+                        class="btn btn-primary"
+                        disabled="@(!IsAuthenticated)">
+                    Lägg till
+                </button>
+            </div>
+        </div>
+    </EditForm>
 }
 
-<hr />
+<hr/>
 
 @if (Items?.Any() ?? false)
 {
-  <div class="table-responsive">
-    <table class="table">
-      <thead class="table-light">
-        <tr><th>Projekt</th><th>Timmar</th><th>Kommentar</th><th></th></tr>
-      </thead>
-      <tbody>
-        @foreach (var item in Items)
-        {
-          <tr>
-            <td>@item.Project?.Name</td>
-            <td>@item.HoursWorked</td>
-            <td>@item.Comment</td>
-            <td class="text-end">
-              <button class="btn btn-outline-danger btn-sm"
-                      @onclick="() => DeleteWorkItem(item.Id)"
-                      disabled="@(!IsAuthenticated)">
-                <i class="bi bi-trash"></i>
-              </button>
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead class="table-light">
+            <tr>
+                <th>Projekt</th>
+                <th>Timmar</th>
+                <th>Kommentar</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Items)
+            {
+                <tr>
+                    <td>@item.Project?.Name</td>
+                    <td>@item.HoursWorked</td>
+                    <td>@item.Comment</td>
+                    <td class="text-end">
+                        <button class="btn btn-outline-danger btn-sm"
+                                @onclick="() => DeleteWorkItem(item.Id)"
+                                disabled="@(!IsAuthenticated)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
 }
 else
 {
-  <p>Inga tids­poster för denna dag.</p>
+    <p>Inga tids­poster för denna dag.</p>
 }
 
 @code {
-  private EditContext? _editContext;
+    private EditContext? _editContext;
 
-  [Parameter] public DateTime Day { get; set; }
-  [Parameter] public List<WorkItem>? Items { get; set; }
-  [Parameter] public List<Project>? Projects { get; set; }
-  [Parameter] public bool IsAuthenticated { get; set; }
-  [Parameter] public string CurrentUserId { get; set; } = "";
+    [Parameter] public DateTime Day { get; set; }
+    [Parameter] public List<WorkItem>? Items { get; set; }
+    [Parameter] public List<Project>? Projects { get; set; }
+    [Parameter] public bool IsAuthenticated { get; set; }
+    [Parameter] public string CurrentUserId { get; set; } = "";
 
-  [Parameter] public WorkItem WorkItem { get; set; } = new WorkItem();
-  [Parameter] public EventCallback<WorkItem> WorkItemChanged { get; set; }
+    [Parameter] public WorkItem WorkItem { get; set; } = new WorkItem();
+    [Parameter] public EventCallback<WorkItem> WorkItemChanged { get; set; }
 
-  [Parameter] public EventCallback<List<WorkItem>> OnItemsChanged { get; set; }
-  [Parameter] public EventCallback<int> OnRefreshRequested { get; set; }
+    [Parameter] public EventCallback<List<WorkItem>> OnItemsChanged { get; set; }
+    [Parameter] public EventCallback<int> OnRefreshRequested { get; set; }
 
-  protected override void OnInitialized()
-  {
-      if (WorkItem == null)
-      {
-          WorkItem = new WorkItem { WorkDate = Day };
-      }
-      
-      _editContext = new EditContext(WorkItem);
-  }
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(WorkItem);
+    }
 
-  protected override void OnParametersSet()
-  {
-      if (WorkItem == null)
-      {
-          WorkItem = new WorkItem { WorkDate = Day };
-          WorkItemChanged.InvokeAsync(WorkItem);
-      }
-      else
-      {
-          WorkItem.WorkDate = Day;
-      }
-      
-      if (_editContext == null || _editContext.Model != WorkItem)
-      {
-          _editContext = new EditContext(WorkItem);
-      }
-  }
+    protected override void OnParametersSet()
+    {
+        WorkItem.WorkDate = Day;
+        
+        if (_editContext == null || _editContext.Model != WorkItem)
+        {
+            _editContext = new EditContext(WorkItem);
+        }
+    }
 
-  private async Task HandleValidSubmit()
-  {
-      if (WorkItem.ProjectId == 0) return;
-      
-      var workItemToSubmit = new WorkItem
-      {
-          WorkDate = WorkItem.WorkDate,
-          ProjectId = WorkItem.ProjectId,
-          HoursWorked = WorkItem.HoursWorked,
-          Comment = WorkItem.Comment
-      };
-      
-      await AddWorkItem(workItemToSubmit);
-  }
+    private async Task HandleValidSubmit()
+    {
+        if (WorkItem.ProjectId == 0) return;
 
-  private async Task AddWorkItem(WorkItem workItem)
-  {
-      if (workItem == null || workItem.ProjectId == 0) return;
+        var workItemToSubmit = new WorkItem
+        {
+            WorkDate = WorkItem.WorkDate,
+            ProjectId = WorkItem.ProjectId,
+            HoursWorked = WorkItem.HoursWorked,
+            Comment = WorkItem.Comment
+        };
 
-      try
-      {
-          await TimeService.AddWorkItemAsync(workItem, CurrentUserId);
-          await OnRefreshRequested.InvokeAsync(0);
-          
-          WorkItem.ProjectId = 0;
-          WorkItem.HoursWorked = 0;
-          WorkItem.Comment = null;
-          
-          await WorkItemChanged.InvokeAsync(WorkItem);
-      }
-      catch (Exception ex)
-      {
-          await JSRuntime.InvokeVoidAsync("alert", $"Fel vid registrering av tid: {ex.Message}");
-      }
-  }
+        await AddWorkItem(workItemToSubmit);
+    }
+    
+    private void ResetForm()
+    {
+        WorkItem.ProjectId = 0;
+        WorkItem.HoursWorked = 0;
+        WorkItem.Comment = null;
+        WorkItemChanged.InvokeAsync(WorkItem);
+    }
 
-  private async Task DeleteWorkItem(int id)
-  {
-      if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
-      {
-          try
-          {
-              await TimeService.DeleteWorkItemAsync(id);
-              await OnRefreshRequested.InvokeAsync(0);
-          }
-          catch (Exception ex)
-          {
-              await JSRuntime.InvokeVoidAsync("alert", $"Fel vid radering: {ex.Message}");
-          }
-      }
-  }
 
-  private async Task HandleProjectsChanged()
-  {
-      Projects = await TimeService.GetProjectsAsync(CurrentUserId);
-      StateHasChanged();
-  }
+    private async Task AddWorkItem(WorkItem workItem)
+    {
+        if (workItem.ProjectId == 0) return;
+
+        try
+        {
+            await TimeService.AddWorkItemAsync(workItem, CurrentUserId);
+            await OnRefreshRequested.InvokeAsync(0);
+
+            ResetForm();
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Fel vid registrering av tid: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteWorkItem(int id)
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
+        {
+            try
+            {
+                await TimeService.DeleteWorkItemAsync(id);
+                await OnRefreshRequested.InvokeAsync(0);
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Fel vid radering: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task HandleProjectsChanged()
+    {
+        Projects = await TimeService.GetProjectsAsync(CurrentUserId);
+        StateHasChanged();
+    }
+
 }

@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.JSInterop;
+using System.Security.Claims;
 using TimeTracker.Models;
 using TimeTracker.Pages.Components;
 using TimeTracker.Services;
@@ -11,12 +11,11 @@ namespace TimeTracker.Pages
     {
         [Inject] protected ITimeTrackingService TimeService { get; set; }
         [Inject] protected AuthenticationStateProvider AuthProvider { get; set; }
-        [Inject] protected IJSRuntime JSRuntime { get; set; }
 
-        // Component reference to access public methods
+        // Component reference
         private CalendarGrid _calendarGrid;
 
-        // ---------- state ----------------------------------------------------
+        // ---------- State ----------------------------------------------------
         private string _currentUserId = "";
         private List<Project>? _projects = new List<Project>();
         private List<WorkDay> _monthWorkDays = new();
@@ -29,40 +28,48 @@ namespace TimeTracker.Pages
         
         protected override async Task OnInitializedAsync()
         {
+            // Get the current user ID
             var auth = await AuthProvider.GetAuthenticationStateAsync();
-            _currentUserId = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
+            _currentUserId = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
 
             var today = DateTime.Today;
             _currentYear = today.Year;
             _currentMonth = today.Month;
+            _selectedDay = today;
+            
             _projects = await TimeService.GetProjectsAsync(_currentUserId);
             
-            _selectedDay = today;
-            _projects = await TimeService.GetProjectsAsync(_currentUserId);
-            if (_newWorkItem != null)
-            {
-                _newWorkItem.WorkDate = today;
-            }
+            _newWorkItem.WorkDate = today;
         }
 
+        // ---------- Eventhandler for CalendarGrid ----------------------------
+        
         private void HandleMonthDataLoaded(List<WorkDay> workDays)
         {
             _monthWorkDays = workDays;
             
-            // If we have a selected day, update the day items
             if (_selectedDay != DateTime.MinValue)
             {
                 UpdateDayWorkItems();
             }
         }
-
-        private void UpdateDayWorkItems()
+        
+        private void HandleMonthChanged((int Year, int Month) newDate)
         {
-            _dayWorkItems = _monthWorkDays
-                .FirstOrDefault(w => w.Date.Date == _selectedDay.Date)?
-                .WorkItems.ToList()
-                ?? new List<WorkItem>();
+            _currentYear = newDate.Year;
+            _currentMonth = newDate.Month;
+            _selectedDay = DateTime.MinValue;
+            StateHasChanged();
         }
+
+        private void HandleDaySelected(DateTime day)
+        {
+            _selectedDay = day;
+            UpdateDayWorkItems();
+            StateHasChanged();
+        }
+
+        // ---------- Eventhandler for DayDetail ------------------------------
 
         private async Task RefreshCalendarData(int _)
         {
@@ -78,19 +85,14 @@ namespace TimeTracker.Pages
             StateHasChanged();
         }
 
-        private void HandleMonthChanged((int Year, int Month) newDate)
-        {
-            _currentYear = newDate.Year;
-            _currentMonth = newDate.Month;
-            _selectedDay = DateTime.MinValue;
-            StateHasChanged();
-        }
+        // ---------- Helpers ----------------------------------------------
 
-        private void HandleDaySelected(DateTime day)
+        private void UpdateDayWorkItems()
         {
-            _selectedDay = day;
-            UpdateDayWorkItems();
-            StateHasChanged();
+            _dayWorkItems = _monthWorkDays
+                .FirstOrDefault(w => w.Date.Date == _selectedDay.Date)?
+                .WorkItems.ToList()
+                ?? new List<WorkItem>();
         }
     }
 }

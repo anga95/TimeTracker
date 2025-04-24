@@ -90,8 +90,7 @@
       await TimeService.CreateProjectAsync(_newProjectName, _currentUserId);
       await OnProjectChanged.InvokeAsync();
 
-      _newProjectName = string.Empty;
-      _showModal = false;
+      CloseModal();
     }
     catch (Exception ex)
     {

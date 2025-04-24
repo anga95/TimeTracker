@@ -128,17 +128,8 @@ else
       // Use the new method that only gets data for the current month
       _monthWorkDays = await TimeService.GetWorkDaysForMonthAsync(_currentUserId, Year, Month);
 
-      // Calculate grid parameters
-      var first = new DateTime(Year, Month, 1);
-      int dow = (int)first.DayOfWeek;
-      if (dow == 0) dow = 7; // Adjust for Sunday
-      var offset = dow - 1;
-      _gridStart = first.AddDays(-offset);
-
-      int days = DateTime.DaysInMonth(Year, Month);
-      int cells = offset + days;
-      _totalRows = (int)Math.Ceiling(cells / 7.0);
-
+      CalculateCalendarGridParameters(Year, Month);
+      
       await OnMonthDataLoaded.InvokeAsync(_monthWorkDays);
     }
     finally
@@ -147,6 +138,30 @@ else
       StateHasChanged();
     }
   }
+  
+  private void CalculateCalendarGridParameters(int year, int month)
+  {
+    DateTime firstDayOfMonth = new DateTime(year, month, 1);
+    
+    // Get day of week (0-6, where 0 is Sunday)
+    int dayOfWeekIndex = (int)firstDayOfMonth.DayOfWeek;
+    
+    // Convert to European convention where Monday is the first day of the week
+    // In this convention: Monday=1, Tuesday=2, ..., Sunday=7
+    if (dayOfWeekIndex == 0)
+      dayOfWeekIndex = 7;
+    
+    int daysToFirstMonday = dayOfWeekIndex - 1;
+    
+    // Set grid start date to the Monday at or before the first of the month
+    _gridStart = firstDayOfMonth.AddDays(-daysToFirstMonday);
+    
+    // Calculate how many rows we need to display the entire month
+    int daysInMonth = DateTime.DaysInMonth(year, month);
+    int totalCellsNeeded = daysToFirstMonday + daysInMonth;
+    _totalRows = (int)Math.Ceiling(totalCellsNeeded / 7.0);
+  }
+
 
   private async Task HandleDayClick(DateTime day)
   {
