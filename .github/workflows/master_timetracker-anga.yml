@@ -57,7 +57,7 @@ jobs:
     runs-on: windows-latest
     needs: build_and_test
     environment:
-      name: 'Production'
+      name: 'staging'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
       id-token: write
@@ -82,8 +82,8 @@ jobs:
         with:
           app-name: 'timetracker-anga'
           slot-name: 'staging'
-          package: .
-      
+          package: ${{ github.workspace }}  
+  
   notify_teams:
     needs: [ build_and_test, deploy ]
     if: always()
