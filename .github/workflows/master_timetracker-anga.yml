@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy ASP.Net Core app to Azure Web App - timetracker-anga
+name: Build, Test and Deploy
 
 on:
   push:
@@ -10,10 +7,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build_and_test:
     runs-on: windows-latest
+    outputs:
+      appversion: ${{ env.APPVERSION }}
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -29,11 +28,24 @@ jobs:
         with:
           dotnet-version: '8.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore
+      
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publish test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/TestResults/test-results.trx
+        if: always()
+
+      - name: Publish application
+        run: dotnet publish src/TimeTracker.csproj -c Release -o "${{env.DOTNET_ROOT}}/myapp"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -43,13 +55,13 @@ jobs:
 
   deploy:
     runs-on: windows-latest
-    needs: build
+    needs: build_and_test
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
@@ -72,32 +84,14 @@ jobs:
           slot-name: 'staging'
           package: .
       
-      - name: Notify Microsoft Teams
-        if: success()
-        shell: pwsh
-        run: |
-          $payload = @{
-            "@type" = "MessageCard"
-            "@context" = "http://schema.org/extensions"
-            summary = "Deploy notifiering"
-            themeColor = "0076D7"
-            title = "✅ Deploy klar till Azure Staging"
-            text = "En ny version av TimeTracker har just pushats till staging-slotten. Dags att testa! 🎉"
-          } | ConvertTo-Json -Depth 10
-
-          Invoke-RestMethod -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}" -Method Post -ContentType "application/json" -Body $payload
-
-      - name: Notify Microsoft Teams on failure
-        if: failure()
-        shell: pwsh
-        run: |
-          $payload = @{
-            "@type" = "MessageCard"
-            "@context" = "http://schema.org/extensions"
-            summary = "Deploy notifiering"
-            themeColor = "FF0000"
-            title = "❌ Deploy misslyckades"
-            text = "TimeTracker deploy till staging-slotten misslyckades. Kolla GitHub Actions-loggen för mer info. 🚨"
-          } | ConvertTo-Json -Depth 10
-
-          Invoke-RestMethod -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}" -Method Post -ContentType "application/json" -Body $payload
+  notify_teams:
+    needs: [ build_and_test, deploy ]
+    if: always()
+    uses: ./.github/workflows/teams-notification.yml
+    with:
+      build-result: ${{ needs.build_and_test.result }}
+      deploy-result: ${{ needs.deploy.result }}
+      version: ${{ needs.build_and_test.outputs.appversion }}
+      environment: 'staging'
+    secrets:
+      TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}

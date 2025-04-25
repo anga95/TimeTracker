@@ -1,0 +1,98 @@
+name: Teams Notification
+on:
+  workflow_call:
+    inputs:
+      build-result:
+        description: 'Result of the build job (success, failure, etc)'
+        type: string
+        required: true
+      deploy-result:
+        description: 'Result of the deploy job (success, failure, skipped, etc)'
+        type: string
+        required: true
+      version:
+        description: 'Application version'
+        type: string
+        required: false
+        default: ''
+      environment:
+        description: 'Deployment environment'
+        type: string
+        required: false
+        default: 'production'
+      app-name:
+        description: 'Application name'
+        type: string
+        required: false
+        default: 'TimeTracker'
+    secrets:
+      TEAMS_WEBHOOK_URL:
+        required: true
+
+jobs:
+  notify:
+    runs-on: windows-latest
+    steps:
+      - name: Prepare notification data
+        id: prepare-data
+        shell: pwsh
+        run: |
+          $buildResult = "${{ inputs.build-result }}"
+          $deployResult = "${{ inputs.deploy-result }}"
+          $appName = "${{ inputs.app-name }}"
+          $environment = "${{ inputs.environment }}"
+          $version = "${{ inputs.version }}"
+          
+          $title = ""
+          $text = ""
+          $themeColor = ""
+          $summary = ""
+          
+          # Decide notification content based on build and deploy results
+          if ($buildResult -ne "success") {
+            # Build failure notification
+            $title = "❌ Build eller tester misslyckades"
+            $text = "$appName build eller tester misslyckades. Ingen deployment kommer att göras. Kolla GitHub Actions-loggen för mer info. 🚨"
+            $themeColor = "FF0000"
+            $summary = "Build notifiering"
+          } 
+          elseif ($deployResult -eq "success") {
+            # Deploy success notification
+            $title = "✅ Deploy klar till $environment"
+            $text = "En ny version av $appName har just pushats till $environment-miljön. $(if ($version) {"Version: $version. "})Dags att testa! 🎉"
+            $themeColor = "00B377"
+            $summary = "Deploy notifiering"
+          }
+          elseif ($deployResult -ne "success" -and $deployResult -ne "skipped") {
+            # Deploy failure notification
+            $title = "❌ Deploy misslyckades till $environment"
+            $text = "$appName deploy till $environment-miljön misslyckades. Kolla GitHub Actions-loggen för mer info. 🚨"
+            $themeColor = "FF0000"
+            $summary = "Deploy notifiering"
+          }
+          else {
+            # Skip notification if no conditions match (e.g., build success but deploy skipped)
+            echo "notification-needed=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          
+          echo "title=$title" >> $env:GITHUB_OUTPUT
+          echo "text=$text" >> $env:GITHUB_OUTPUT
+          echo "theme-color=$themeColor" >> $env:GITHUB_OUTPUT
+          echo "summary=$summary" >> $env:GITHUB_OUTPUT
+          echo "notification-needed=true" >> $env:GITHUB_OUTPUT
+
+      - name: Send Teams notification
+        if: steps.prepare-data.outputs.notification-needed == 'true'
+        shell: pwsh
+        run: |
+          $payload = @{
+            "@type" = "MessageCard"
+            "@context" = "http://schema.org/extensions"
+            summary = "${{ steps.prepare-data.outputs.summary }}"
+            themeColor = "${{ steps.prepare-data.outputs.theme-color }}"
+            title = "${{ steps.prepare-data.outputs.title }}"
+            text = "${{ steps.prepare-data.outputs.text }}"
+          } | ConvertTo-Json -Depth 10
+
+          Invoke-RestMethod -Uri "${{ secrets.TEAMS_WEBHOOK_URL }}" -Method Post -ContentType "application/json" -Body $payload
