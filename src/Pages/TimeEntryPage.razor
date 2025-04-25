@@ -1,0 +1,34 @@
+﻿@page "/timeEntryPage"
+@page "/"
+@implements IDisposable
+
+@if (_viewModel != null)
+{
+    <!-- Kalendergrid -->
+    <CalendarGrid
+      Year="@_viewModel.CurrentYear"
+      Month="@_viewModel.CurrentMonth"
+      SelectedDay="@_viewModel.SelectedDay"
+      OnMonthDataLoaded="HandleMonthDataLoaded"
+      OnMonthChanged="HandleMonthChanged"
+      OnDaySelected="HandleDaySelected"
+      @ref="_calendarGrid" />
+
+    <!-- Detaljvy för vald dag -->
+    @if (_viewModel.SelectedDay != DateTime.MinValue)
+    {
+      <DayDetail
+        Day="@_viewModel.SelectedDay"
+        Items="@_viewModel.DayTimeEntry"
+        Projects="@_viewModel.Projects"
+        @bind-TimeEntry="@_viewModel.NewTimeEntry"
+        CurrentUserId="@_viewModel.CurrentUserId"
+        IsAuthenticated="!string.IsNullOrEmpty(_viewModel.CurrentUserId)"
+        OnRefreshRequested="RefreshCalendarData"
+        OnItemsChanged="HandleTimeEntriesChanged" />
+    }
+}
+else
+{
+    <div>Laddar...</div>
+}
