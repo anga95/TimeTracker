@@ -41,7 +41,7 @@ public class TimeEntryViewModel
 
     
     // Event för UI-uppdatering
-    public event Action StateChanged;
+    public  event Action? StateChanged;
 
     public TimeEntryViewModel(ITimeTrackingService timeService, AuthenticationStateProvider authProvider)
     {

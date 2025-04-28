@@ -2,7 +2,7 @@
 
 namespace TimeTracker.Pages;
 
-public class about : PageModel
+public class About : PageModel
 {
     public void OnGet()
     {

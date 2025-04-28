@@ -22,6 +22,22 @@ jobs:
         run: |
           $ts = Get-Date -Format yyyyMMdd.HHmmss
           echo "APPVERSION=$ts" >> $Env:GITHUB_ENV
+          
+      - name: Create VersionInfo.cs
+        shell: pwsh
+        run: |
+          $version = $Env:APPVERSION
+          $content = @"
+          namespace TimeTracker.Models
+          {
+              public static class VersionInfo
+              {
+                  public const string Version = "$version";
+              }
+          }
+          "@
+          New-Item -Path ./src/Models -ItemType Directory -Force
+          Set-Content -Path ./src/Models/VersionInfo.cs -Value $content
       
       - name: Set up .NET Core
         uses: actions/setup-dotnet@v4

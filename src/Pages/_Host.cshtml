@@ -1,11 +1,9 @@
 ﻿@page "/{*catchall}"
 @using Microsoft.AspNetCore.Components.Web
-@using Microsoft.Extensions.Options
 @using TimeTracker.Models
 @namespace TimeTracker.Pages
 @addTagHelper *, Microsoft.AspNetCore.Components.Server
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
-@inject IOptions<AppSettings> Settings
 
 <!DOCTYPE html>
 <html lang="sv">
@@ -24,7 +22,7 @@
     <link rel="icon"    href="favicon.png" />
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
-    <link href="css/site.css?v=@Settings.Value.AppVersion" rel="stylesheet" />
+    <link href="css/site.css?v=@VersionInfo.Version" rel="stylesheet" />
 
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
 </head>
@@ -54,6 +52,6 @@
 </script>
 </body>
 <footer class="text-center mt-4">
-    <small>Version @Settings.Value.AppVersion</small>
+    <small>Version @VersionInfo.Version</small>
 </footer>
 </html>
