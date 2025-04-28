@@ -2,30 +2,30 @@
 @page "/"
 @implements IDisposable
 
-@if (_viewModel != null)
+@if (initialized)
 {
     <!-- Kalendergrid -->
     <CalendarGrid
-      Year="@_viewModel.CurrentYear"
-      Month="@_viewModel.CurrentMonth"
-      SelectedDay="@_viewModel.SelectedDay"
-      OnMonthDataLoaded="HandleMonthDataLoaded"
-      OnMonthChanged="HandleMonthChanged"
-      OnDaySelected="HandleDaySelected"
+      Year="@ViewModel.CurrentYear"
+      Month="@ViewModel.CurrentMonth"
+      SelectedDay="@ViewModel.SelectedDay"
+      OnMonthDataLoaded="ViewModel.HandleMonthDataLoaded"
+      OnMonthChanged="ViewModel.HandleMonthChanged"
+      OnDaySelected="ViewModel.HandleDaySelected"
       @ref="_calendarGrid" />
 
     <!-- Detaljvy för vald dag -->
-    @if (_viewModel.SelectedDay != DateTime.MinValue)
+    @if (ViewModel.SelectedDay != DateTime.MinValue)
     {
       <DayDetail
-        Day="@_viewModel.SelectedDay"
-        Items="@_viewModel.DayTimeEntry"
-        Projects="@_viewModel.Projects"
-        @bind-TimeEntry="@_viewModel.NewTimeEntry"
-        CurrentUserId="@_viewModel.CurrentUserId"
-        IsAuthenticated="!string.IsNullOrEmpty(_viewModel.CurrentUserId)"
+        Day="@ViewModel.SelectedDay"
+        Items="@ViewModel.DayTimeEntry"
+        Projects="@ViewModel.Projects"
+        @bind-TimeEntry="@ViewModel.NewTimeEntry"
+        CurrentUserId="@ViewModel.CurrentUserId"
+        IsAuthenticated="!string.IsNullOrEmpty(ViewModel.CurrentUserId)"
         OnRefreshRequested="RefreshCalendarData"
-        OnItemsChanged="HandleTimeEntriesChanged" />
+        OnItemsChanged="ViewModel.HandleTimeEntriesChanged" />
     }
 }
 else

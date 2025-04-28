@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TimeTracker.Data;
 using TimeTracker.Services;
+using TimeTracker.ViewModels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,6 +67,16 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 builder.Services.AddScoped<IAiService, AiService>();
 builder.Services.AddScoped<AiSummaryStateService>();
 builder.Services.AddScoped<ITimeTrackingService, TimeTrackingService>();
+
+#endregion
+#region ViewModels
+
+builder.Services.AddScoped<TimeEntryViewModel>();
+builder.Services.AddScoped<CalendarGridViewModel>();
+builder.Services.AddScoped<MonthNavigationViewModel>();
+builder.Services.AddScoped<DayDetailViewModel>();
+builder.Services.AddScoped<ProjectSelectorViewModel>();
+
 
 #endregion
 

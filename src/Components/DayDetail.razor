@@ -1,11 +1,13 @@
-﻿@using TimeTracker.Models
-@using TimeTracker.Services
-@inject ITimeTrackingService TimeService
-@inject IJSRuntime JSRuntime
+﻿@namespace TimeTracker.Components
+@inject DayDetailViewModel ViewModel
+@using System.Reflection
+@using TimeTracker.Models
+@using TimeTracker.ViewModels
+@implements IDisposable
 
-@if (_editContext != null)
+@if (ViewModel.EditContext != null)
 {
-    <EditForm EditContext="_editContext" OnValidSubmit="HandleValidSubmit">
+    <EditForm EditContext="ViewModel.EditContext" OnValidSubmit="ViewModel.HandleValidSubmit">
         <DataAnnotationsValidator/>
         <ValidationSummary class="text-danger mb-3"/>
 
@@ -13,32 +15,32 @@
             <div class="col-md-4">
                 <label>Projekt</label>
                 <ProjectSelector
-                    Projects="Projects ?? new List<Project>()"
-                    @bind-SelectedProjectId="TimeEntry.ProjectId"
-                    OnProjectChanged="HandleProjectsChanged"/>
-                <ValidationMessage For="@(() => TimeEntry.ProjectId)"/>
+                    Projects="ViewModel.Projects ?? new List<Project>()"
+                    @bind-SelectedProjectId="ViewModel.TimeEntry.ProjectId"
+                    OnProjectChanged="ViewModel.HandleProjectsChanged"/>
+                <ValidationMessage For="@(() => ViewModel.TimeEntry.ProjectId)"/>
             </div>
 
             <div class="col-md-2">
                 <label>Timmar</label>
-                <InputNumber @bind-Value="TimeEntry.HoursWorked"
+                <InputNumber @bind-Value="ViewModel.TimeEntry.HoursWorked"
                              class="form-control"
-                             disabled="@(!IsAuthenticated)"/>
-                <ValidationMessage For="@(() => TimeEntry.HoursWorked)"/>
+                             disabled="@(!ViewModel.IsAuthenticated)"/>
+                <ValidationMessage For="@(() => ViewModel.TimeEntry.HoursWorked)"/>
             </div>
 
             <div class="col-md-4">
                 <label>Kommentar</label>
-                <InputTextArea @bind-Value="TimeEntry.Comment"
+                <InputTextArea @bind-Value="ViewModel.TimeEntry.Comment"
                                rows="1"
                                class="form-control"
-                               disabled="@(!IsAuthenticated)"/>
+                               disabled="@(!ViewModel.IsAuthenticated)"/>
             </div>
 
             <div class="col-md-2 text-end">
                 <button type="submit"
                         class="btn btn-primary"
-                        disabled="@(!IsAuthenticated)">
+                        disabled="@(!ViewModel.IsAuthenticated)">
                     Lägg till
                 </button>
             </div>
@@ -48,7 +50,7 @@
 
 <hr/>
 
-@if (Items?.Any() ?? false)
+@if (ViewModel.Items?.Any() ?? false)
 {
     <div class="table-responsive">
         <table class="table">
@@ -61,7 +63,7 @@
             </tr>
             </thead>
             <tbody>
-            @foreach (var item in Items)
+            @foreach (var item in ViewModel.Items)
             {
                 <tr>
                     <td>@item.Project?.Name</td>
@@ -69,8 +71,8 @@
                     <td>@item.Comment</td>
                     <td class="text-end">
                         <button class="btn btn-outline-danger btn-sm"
-                                @onclick="() => DeleteTimeEntry(item.Id)"
-                                disabled="@(!IsAuthenticated)">
+                                @onclick="() => ViewModel.DeleteTimeEntry(item.Id)"
+                                disabled="@(!ViewModel.IsAuthenticated)">
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>
@@ -86,8 +88,6 @@ else
 }
 
 @code {
-    private EditContext? _editContext;
-
     [Parameter] public DateTime Day { get; set; }
     [Parameter] public List<TimeEntry>? Items { get; set; }
     [Parameter] public List<Project>? Projects { get; set; }
@@ -102,80 +102,43 @@ else
 
     protected override void OnInitialized()
     {
-        _editContext = new EditContext(TimeEntry);
+        ViewModel.Initialize();
+        ViewModel.StateChanged += StateHasChanged;
+        
+        ViewModel.TimeEntryChanged += entry => TimeEntryChanged.InvokeAsync(entry);
+        ViewModel.ItemsChanged += items => OnItemsChanged.InvokeAsync(items);
+        ViewModel.RefreshRequested += id => OnRefreshRequested.InvokeAsync(id);
     }
 
     protected override void OnParametersSet()
     {
-        TimeEntry.WorkDate = Day;
+        ViewModel.Day = Day;
+        ViewModel.Items = Items ?? new List<TimeEntry>();
+        ViewModel.Projects = Projects ?? new List<Project>();
+        ViewModel.IsAuthenticated = IsAuthenticated;
+        ViewModel.CurrentUserId = CurrentUserId;
+        ViewModel.TimeEntry = TimeEntry; // Detta triggar en property-setter som skapar en ny EditContext
         
-        if (_editContext == null || _editContext.Model != TimeEntry)
-        {
-            _editContext = new EditContext(TimeEntry);
-        }
+        ViewModel.SetParameters();
     }
 
-    private async Task HandleValidSubmit()
+    public void Dispose()
     {
-        if (TimeEntry.ProjectId == 0) return;
-
-        var timeEntryToSubmit = new TimeEntry
+        ViewModel.StateChanged -= StateHasChanged;
+        
+        var type = ViewModel.GetType();
+        var events = type.GetEvents();
+        
+        foreach (var eventInfo in events)
         {
-            WorkDate = TimeEntry.WorkDate,
-            ProjectId = TimeEntry.ProjectId,
-            HoursWorked = TimeEntry.HoursWorked,
-            Comment = TimeEntry.Comment
-        };
-
-        await AddTimeEntry(timeEntryToSubmit);
-    }
-    
-    private void ResetForm()
-    {
-        TimeEntry.ProjectId = 0;
-        TimeEntry.HoursWorked = 0;
-        TimeEntry.Comment = null;
-        TimeEntryChanged.InvokeAsync(TimeEntry);
-    }
-
-
-    private async Task AddTimeEntry(TimeEntry timeEntry)
-    {
-        if (timeEntry.ProjectId == 0) return;
-
-        try
-        {
-            await TimeService.AddTimeEntryAsync(timeEntry, CurrentUserId);
-            await OnRefreshRequested.InvokeAsync(0);
-
-            ResetForm();
-        }
-        catch (Exception ex)
-        {
-            await JSRuntime.InvokeVoidAsync("alert", $"Fel vid registrering av tid: {ex.Message}");
-        }
-    }
-
-    private async Task DeleteTimeEntry(int id)
-    {
-        if (await JSRuntime.InvokeAsync<bool>("confirm", "Är du säker?"))
-        {
-            try
+            var field = type.GetField(eventInfo.Name, 
+                BindingFlags.NonPublic | 
+                BindingFlags.Instance);
+            
+            if (field != null)
             {
-                await TimeService.DeleteTimeEntryAsync(id);
-                await OnRefreshRequested.InvokeAsync(0);
-            }
-            catch (Exception ex)
-            {
-                await JSRuntime.InvokeVoidAsync("alert", $"Fel vid radering: {ex.Message}");
+                field.SetValue(ViewModel, null);
             }
         }
     }
-
-    private async Task HandleProjectsChanged()
-    {
-        Projects = await TimeService.GetProjectsAsync(CurrentUserId);
-        StateHasChanged();
-    }
-
 }

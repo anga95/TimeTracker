@@ -72,6 +72,7 @@ else
         </div>
       }
     </div>
+    }
   }
 }
 
@@ -90,8 +91,7 @@ else
   private int _totalRows;
   private string _currentUserId = "";
   private bool _isLoading = false;
-  private int _lastLoadedYear;
-  private int _lastLoadedMonth;
+  private bool _initialized = false;  // Ny flagga för att förhindra dubbel laddning
 
 
   private string[] WeekdayHeaders => new[] { "Mån", "Tis", "Ons", "Tors", "Fre", "Lör", "Sön" };
@@ -104,15 +104,26 @@ else
 
   protected override async Task OnParametersSetAsync()
   {
+    // Kontrollera om vi är klara med initialisering
+    if (!_initialized)
+    {
+      _initialized = true;
+      CalculateCalendarGridParameters(Year, Month);
+      await LoadMonthDataAsync();
+      return;
+    }
+
+    // Om parametrarna har ändrats, ladda om data
     if (Year > 0 && Month > 0 && 
         (Year != _lastLoadedYear || Month != _lastLoadedMonth))
     {
-      _lastLoadedYear = Year;
-      _lastLoadedMonth = Month;
+      CalculateCalendarGridParameters(Year, Month);
       await LoadMonthDataAsync();
     }
   }
 
+  private int _lastLoadedYear;
+  private int _lastLoadedMonth;
 
   private async Task HandleMonthNavigation((int Year, int Month) newDate)
   {
@@ -121,15 +132,20 @@ else
 
   private async Task LoadMonthDataAsync()
   {
+    // Om vi redan håller på att ladda, avbryt
+    if (_isLoading) return;
+
     _isLoading = true;
     StateHasChanged();
 
     try
     {
+      // Spara vad vi laddar så vi inte laddar samma period igen
+      _lastLoadedYear = Year;
+      _lastLoadedMonth = Month;
+
       // Use the new method that only gets data for the current month
       _monthWorkDays = await TimeService.GetWorkDaysForMonthAsync(_currentUserId, Year, Month);
-
-      CalculateCalendarGridParameters(Year, Month);
       
       await OnMonthDataLoaded.InvokeAsync(_monthWorkDays);
     }
@@ -188,9 +204,6 @@ else
   // Public method to force refresh
   public async Task RefreshDataAsync()
   {
-    // Reset tracked state to force reload
-    _lastLoadedYear = 0;
-    _lastLoadedMonth = 0;
     await LoadMonthDataAsync();
   }
 }

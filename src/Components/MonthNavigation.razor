@@ -1,53 +1,51 @@
-﻿@using System.Globalization
+﻿@namespace TimeTracker.Components
+@inject MonthNavigationViewModel ViewModel
+@using System.Reflection
+@using TimeTracker.ViewModels
+@implements IDisposable
+
 <div class="row mb-4">
-  <div class="col">
-    <button class="btn btn-secondary me-2" @onclick="PrevMonthClicked">« Föregående</button>
-    <strong>@MonthName @Year</strong>
-    <button class="btn btn-secondary ms-2" @onclick="NextMonthClicked">Nästa »</button>
-  </div>
+    <div class="col">
+        <button class="btn btn-secondary me-2" @onclick="ViewModel.PrevMonthClicked">« Föregående</button>
+        <strong>@ViewModel.MonthName @ViewModel.Year</strong>
+        <button class="btn btn-secondary ms-2" @onclick="ViewModel.NextMonthClicked">Nästa »</button>
+    </div>
 </div>
 
 @code {
-    [Parameter] public int Month { get; set; }
     [Parameter] public int Year { get; set; }
+    [Parameter] public int Month { get; set; }
     [Parameter] public EventCallback<(int Year, int Month)> OnNavigate { get; set; }
-
-    private string MonthName => 
-        CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(Month);
-
-    private async Task PrevMonthClicked()
+    
+    protected override void OnInitialized()
     {
-        int newMonth, newYear;
-        
-        if (Month == 1)
-        {
-            newMonth = 12;
-            newYear = Year - 1;
-        }
-        else
-        {
-            newMonth = Month - 1;
-            newYear = Year;
-        }
-        
-        await OnNavigate.InvokeAsync((newYear, newMonth));
+        ViewModel.StateChanged += StateHasChanged;
+        ViewModel.NavigationRequested += async date => await OnNavigate.InvokeAsync(date);
     }
-
-    private async Task NextMonthClicked()
+    
+    protected override void OnParametersSet()
     {
-        int newMonth, newYear;
+        ViewModel.Year = Year;
+        ViewModel.Month = Month;
+    }
+    
+    public void Dispose()
+    {
+        ViewModel.StateChanged -= StateHasChanged;
         
-        if (Month == 12)
-        {
-            newMonth = 1;
-            newYear = Year + 1;
-        }
-        else
-        {
-            newMonth = Month + 1;
-            newYear = Year;
-        }
+        var type = ViewModel.GetType();
+        var events = type.GetEvents();
         
-        await OnNavigate.InvokeAsync((newYear, newMonth));
+        foreach (var eventInfo in events)
+        {
+            var field = type.GetField(eventInfo.Name, 
+                BindingFlags.NonPublic | 
+                BindingFlags.Instance);
+            
+            if (field != null)
+            {
+                field.SetValue(ViewModel, null);
+            }
+        }
     }
 }

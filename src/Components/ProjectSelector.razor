@@ -1,16 +1,16 @@
-﻿@using System.Security.Claims
+﻿@namespace TimeTracker.Components
+@inject ProjectSelectorViewModel ViewModel
+@using System.Reflection
 @using TimeTracker.Models
-@using TimeTracker.Services
-@inject IJSRuntime JSRuntime
-@inject ITimeTrackingService TimeService
-@inject AuthenticationStateProvider AuthProvider
+@using TimeTracker.ViewModels
+@implements IDisposable
 
 <div class="input-group">
   <select class="form-select"
-          value="@SelectedProjectId"
-          @onchange="OnSelectionChanged">
+          value="@ViewModel.SelectedProjectId"
+          @onchange="ViewModel.OnSelectionChanged">
     <option value="0">-- Välj projekt --</option>
-    @foreach (var p in Projects)
+    @foreach (var p in ViewModel.Projects)
     {
       <option value="@p.Id">@p.Name</option>
     }
@@ -18,19 +18,19 @@
 
   <button class="btn btn-outline-secondary"
           type="button"
-          @onclick="() => _showModal = true">
+          @onclick="ViewModel.OpenModal">
     <i class="bi bi-plus-circle"></i>
   </button>
 
   <button class="btn btn-outline-danger"
           type="button"
-          disabled="@(SelectedProjectId == 0)"
-          @onclick="DeleteProjectWithConfirmation">
+          disabled="@(ViewModel.SelectedProjectId == 0)"
+          @onclick="ViewModel.DeleteProjectWithConfirmation">
     <i class="bi bi-trash"></i>
   </button>
 </div>
 
-@if (_showModal)
+@if (ViewModel.ShowModal)
 {
   <div class="modal fade show" style="display:block;">
     <div class="modal-dialog">
@@ -38,19 +38,19 @@
         <div class="modal-header">
           <h5 class="modal-title">Skapa nytt projekt</h5>
           <button type="button" class="btn-close"
-                  @onclick="CloseModal"></button>
+                  @onclick="ViewModel.CloseModal"></button>
         </div>
         <div class="modal-body">
-          <InputText @bind-Value="_newProjectName"
+          <InputText @bind-Value="ViewModel.NewProjectName"
                      class="form-control"
                      placeholder="Projektnamn"/>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary"
-                  @onclick="CloseModal">Avbryt
+                  @onclick="ViewModel.CloseModal">Avbryt
           </button>
           <button class="btn btn-primary"
-                  @onclick="CreateProject">Lägg till
+                  @onclick="ViewModel.CreateProject">Lägg till
           </button>
         </div>
       </div>
@@ -60,76 +60,43 @@
 }
 
 @code {
-  [Parameter] public List<Project> Projects { get; set; } = new();
+    [Parameter] public List<Project> Projects { get; set; } = new();
+    [Parameter] public int SelectedProjectId { get; set; }
+    [Parameter] public EventCallback<int> SelectedProjectIdChanged { get; set; }
+    [Parameter] public EventCallback OnProjectChanged { get; set; }
 
-  [Parameter] public int SelectedProjectId { get; set; }
-  [Parameter] public EventCallback<int> SelectedProjectIdChanged { get; set; }
-
-  [Parameter] public EventCallback OnProjectChanged { get; set; }
-
-
-  private bool _showModal;
-  private string _newProjectName = string.Empty;
-  private string _currentUserId = string.Empty;
-
-  protected override async Task OnInitializedAsync()
-  {
-    var authState = await AuthProvider.GetAuthenticationStateAsync();
-    _currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
-  }
-
-
-  async Task CreateProject()
-  {
-    if (string.IsNullOrWhiteSpace(_newProjectName))
-      return;
-
-    try
+    protected override async Task OnInitializedAsync()
     {
-      await TimeService.CreateProjectAsync(_newProjectName, _currentUserId);
-      await OnProjectChanged.InvokeAsync();
-
-      CloseModal();
+        await ViewModel.InitializeAsync();
+        ViewModel.StateChanged += StateHasChanged;
+    
+        ViewModel.SelectedProjectIdChanged += async value => await SelectedProjectIdChanged.InvokeAsync(value);
+        ViewModel.ProjectChanged += async () => await OnProjectChanged.InvokeAsync();
     }
-    catch (Exception ex)
+    
+    protected override void OnParametersSet()
     {
-      await JSRuntime.InvokeVoidAsync("alert", $"Fel vid skapande av projekt: {ex.Message}");
+        ViewModel.Projects = Projects;
+        ViewModel.SelectedProjectId = SelectedProjectId;
     }
-  }
-
-  void CloseModal()
-  {
-    _showModal = false;
-    _newProjectName = "";
-  }
-
-  async Task DeleteProjectWithConfirmation()
-  {
-    if (SelectedProjectId == 0)
-      return;
-
-    if (await JSRuntime.InvokeAsync<bool>("confirm", "Radera projektet?"))
+    
+    public void Dispose()
     {
-      try
-      {
-        await TimeService.DeleteProjectAsync(SelectedProjectId);
-        await SelectedProjectIdChanged.InvokeAsync(0);
-        await OnProjectChanged.InvokeAsync();
-      }
-      catch (Exception ex)
-      {
-        await JSRuntime.InvokeVoidAsync("alert", $"Fel vid radering av projekt: {ex.Message}");
-      }
+        ViewModel.StateChanged -= StateHasChanged;
+        
+        var type = ViewModel.GetType();
+        var events = type.GetEvents();
+        
+        foreach (var eventInfo in events)
+        {
+            var field = type.GetField(eventInfo.Name, 
+                BindingFlags.NonPublic | 
+                BindingFlags.Instance);
+            
+            if (field != null)
+            {
+                field.SetValue(ViewModel, null);
+            }
+        }
     }
-  }
-
-  private async Task OnSelectionChanged(ChangeEventArgs e)
-  {
-    if (int.TryParse(e.Value?.ToString(), out int newValue))
-    {
-      SelectedProjectId = newValue;
-      await SelectedProjectIdChanged.InvokeAsync(newValue);
-    }
-  }
-
 }
