@@ -34,8 +34,8 @@ builder.Services.AddDbContext<TimeTrackerContext>(
     options => options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 5,
-            maxRetryDelay: TimeSpan.FromSeconds(10),
+            maxRetryCount: 10,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null
         )
     ),

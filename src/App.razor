@@ -1,16 +1,16 @@
-﻿<ErrorBoundary>
-    <Router AppAssembly="@typeof(App).Assembly">
-        <Found Context="routeData">
-            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-        </Found>
-        <NotFound>
-            <PageTitle>Inte hittad</PageTitle>
-            <LayoutView Layout="@typeof(MainLayout)">
-                <p role="alert">Sidan hittades inte.</p>
-            </LayoutView>
-        </NotFound>
-    </Router>
-</ErrorBoundary>
-
-<Toast />
+﻿<CascadingAuthenticationState>
+    <AppErrorBoundary>
+        <Router AppAssembly="@typeof(App).Assembly">
+            <Found Context="routeData">
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <PageTitle>Hittades ej</PageTitle>
+                <LayoutView Layout="@typeof(MainLayout)">
+                    <p role="alert">Tyvärr, den här sidan finns inte.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </AppErrorBoundary>
+</CascadingAuthenticationState>

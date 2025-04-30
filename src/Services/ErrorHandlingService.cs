@@ -55,11 +55,22 @@ public class ErrorHandlingService : IErrorHandlingService
     
     public async Task HandleDatabaseErrorAsync(DbException ex, string source = null)
     {
-        _logger.LogError(ex, "Databasfel i {Source}: {Message}, ErrorCode: {ErrorCode}", 
-            source ?? "okänd källa", ex.Message, ex.ErrorCode);
-    
-        OnError?.Invoke("Ett fel uppstod vid databasåtkomst. Vänligen försök igen senare.", 
-            ErrorSeverity.Error);
+        bool isWakeUpTimeout = ex.Message.Contains("Connection Timeout Expired") &&
+                               ex.Message.Contains("post-login phase");
+
+        if (isWakeUpTimeout)
+        {
+            _logger.LogInformation(ex, "Databasaktivering i {source}:  Azure SQL Database väcks",
+                source ?? "okänd källa");
+        }
+        else
+        {
+            _logger.LogError(ex, "Databasfel i {Source}: {Message}, ErrorCode: {ErrorCode}", 
+                source ?? "okänd källa", ex.Message, ex.ErrorCode);
+            
+            OnError?.Invoke("Ett fel uppstod vid databasåtkomst. Vänligen försök igen senare.", 
+                ErrorSeverity.Error);
+        }
     
         await Task.CompletedTask;
     }

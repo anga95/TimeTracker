@@ -1,4 +1,3 @@
-// Src/Components/ErrorBoundary.razor
 @using TimeTracker.Services
 @inherits ErrorBoundaryBase
 
@@ -11,6 +10,6 @@
     
     protected override Task OnErrorAsync(Exception exception)
     {
-        return ErrorHandler.HandleExceptionAsync(exception, nameof(ErrorBoundary));
+        return ErrorHandler.HandleExceptionAsync(exception, nameof(AppErrorBoundary));
     }
 }
