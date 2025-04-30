@@ -76,7 +76,8 @@ builder.Services.AddScoped<CalendarGridViewModel>();
 builder.Services.AddScoped<MonthNavigationViewModel>();
 builder.Services.AddScoped<DayDetailViewModel>();
 builder.Services.AddScoped<ProjectSelectorViewModel>();
-
+builder.Services.AddScoped<IErrorHandlingService, ErrorHandlingService>();
+builder.Services.AddScoped<SafeExecutor>();
 
 #endregion
 

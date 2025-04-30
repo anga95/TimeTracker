@@ -15,6 +15,7 @@ namespace TimeTracker.Services
 
         private readonly IDbContextFactory<TimeTrackerContext> _dbContextFactory;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly SafeExecutor _safeExecutor;
 
         // Gränsvärden, lästa från konfiguration
         private readonly int _maxCallsPerMonth;
@@ -35,9 +36,11 @@ namespace TimeTracker.Services
             Använd gärna punktlista om det blir tydligare, men skriv som till en kollega/chef.
             ";
 
-        public AiService(IConfiguration configuration,
+        public AiService(
+            IConfiguration configuration,
             IDbContextFactory<TimeTrackerContext> dbContextFactory,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            SafeExecutor safeExecutor)
         {
             string endpoint = configuration["OpenAI:Endpoint"]
                               ?? throw new InvalidOperationException("OpenAI:Endpoint saknas i konfigurationen.");
@@ -54,6 +57,7 @@ namespace TimeTracker.Services
 
             _dbContextFactory = dbContextFactory;
             _httpContextAccessor = httpContextAccessor;
+            _safeExecutor = safeExecutor;
 
             // Läs in gränsvärden från konfiguration, med standardvärden om inte specificerat
             _maxCallsPerMonth = int.Parse(configuration["AIUsage:MaxCallsPerMonth"] ?? "150");
@@ -62,46 +66,54 @@ namespace TimeTracker.Services
 
         public async Task<ChatResponseResult> GetChatResponseAsync(string prompt)
         {
-            var result = new ChatResponseResult();
-
-            if (IsRateLimited())
+            return await _safeExecutor.ExecuteAsync(async () =>
             {
-                result.IsRateLimited = true;
-                result.Summary = "Vänta lite, vänligen försök igen om några sekunder.";
-                return result;
-            }
+                var result = new ChatResponseResult();
 
-            if (!await CanMakeMoreCallsThisMonth())
-            {
+                if (IsRateLimited())
+                {
+                    result.IsRateLimited = true;
+                    result.Summary = "Vänta lite, vänligen försök igen om några sekunder.";
+                    return result;
+                }
+
+                if (!await CanMakeMoreCallsThisMonth())
+                {
+                    result.IsRateLimited = false;
+                    result.Summary = "Du har nått max antal AI-sammanfattningar för den här månaden.";
+                    return result;
+                }
+
+                _lastCallTime = DateTime.UtcNow;
+
+                var messages = new ChatMessage[]
+                {
+                    new SystemChatMessage(SummarySystemMessage),
+                    new UserChatMessage(prompt)
+                };
+
+                ChatClient chatClient = _client.GetChatClient(_deploymentName);
+                ChatCompletion completion = await chatClient.CompleteChatAsync(messages);
+
+                await LogAiCallAsync(prompt);
+
                 result.IsRateLimited = false;
-                result.Summary = "Du har nått max antal AI-sammanfattningar för den här månaden.";
+                var raw = completion.Content[0].Text?.Trim() ?? "";
+
+                if (raw.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase))
+                {
+                    raw = raw.Substring("Assistant:".Length).Trim();
+                }
+
+                result.Summary = raw;
                 return result;
-            }
-
-            _lastCallTime = DateTime.UtcNow;
-
-            var messages = new ChatMessage[]
-            {
-                new SystemChatMessage(SummarySystemMessage),
-                new UserChatMessage(prompt)
-            };
-
-            ChatClient chatClient = _client.GetChatClient(_deploymentName);
-            ChatCompletion completion = await chatClient.CompleteChatAsync(messages);
-
-            await LogAiCallAsync(prompt);
-
-            result.IsRateLimited = false;
-            var raw = completion.Content[0].Text?.Trim() ?? "";
-
-            if (raw.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase))
-            {
-                raw = raw.Substring("Assistant:".Length).Trim();
-            }
-
-            result.Summary = raw;
-            return result;
+            }, new ChatResponseResult 
+            { 
+                IsRateLimited = false,
+                Summary = "Ett fel uppstod när AI-sammanfattningen skulle genereras. Försök igen senare."
+            });
         }
+        
         private bool IsRateLimited()
         {
             return (DateTime.UtcNow - _lastCallTime).TotalSeconds < _minSecondsBetweenCalls;
@@ -109,73 +121,91 @@ namespace TimeTracker.Services
 
         private async Task<bool> CanMakeMoreCallsThisMonth()
         {
-            await using var db = _dbContextFactory.CreateDbContext();
-            var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-            int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
-            Console.WriteLine($"AI calls this month: {monthlyCalls}/{_maxCallsPerMonth}");
-            return monthlyCalls < _maxCallsPerMonth;
+            return await _safeExecutor.ExecuteAsync(async () =>
+            {
+                await using var db = _dbContextFactory.CreateDbContext();
+                var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
+                Console.WriteLine($"AI calls this month: {monthlyCalls}/{_maxCallsPerMonth}");
+                return monthlyCalls < _maxCallsPerMonth;
+            }, true);
         }
 
         private async Task LogAiCallAsync(string prompt)
         {
-            string? userId = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            await using var db = _dbContextFactory.CreateDbContext();
-            db.AiUsageLogs.Add(new AiUsageLog
+            await _safeExecutor.ExecuteAsync(async () =>
             {
-                Timestamp = DateTime.UtcNow,
-                UserId = string.IsNullOrWhiteSpace(userId) ? "demo" : userId,
-                PromptSnippet = prompt?.Length > 200 ? prompt[..200] : prompt
+                string? userId = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                await using var db = _dbContextFactory.CreateDbContext();
+                db.AiUsageLogs.Add(new AiUsageLog
+                {
+                    Timestamp = DateTime.UtcNow,
+                    UserId = string.IsNullOrWhiteSpace(userId) ? "demo" : userId,
+                    PromptSnippet = prompt?.Length > 200 ? prompt[..200] : prompt
+                });
+                await db.SaveChangesAsync();
             });
-            await db.SaveChangesAsync();
         }
 
         public async Task<(int monthlyCalls, int maxCalls)> GetUsageInfoAsync()
         {
-            await using var db = _dbContextFactory.CreateDbContext();
-            var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-            int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
-            return (monthlyCalls, _maxCallsPerMonth);
+            return await _safeExecutor.ExecuteAsync(async () =>
+            {
+                await using var db = _dbContextFactory.CreateDbContext();
+                var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+                int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
+                return (monthlyCalls, _maxCallsPerMonth);
+            });
         }
         
         public async Task<string?> GetCachedSummaryAsync(string userId)
         {
-            await using var db = _dbContextFactory.CreateDbContext();
-            var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
-            return entry?.Summary;
+            return await _safeExecutor.ExecuteAsync(async () =>
+            {
+                await using var db = _dbContextFactory.CreateDbContext();
+                var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+                return entry?.Summary;
+            });
         }
 
         public async Task SaveOrUpdateSummaryAsync(string userId, string summary)
         {
-            await using var db = _dbContextFactory.CreateDbContext();
-            var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
-            if (entry is null)
+            await _safeExecutor.ExecuteAsync(async () =>
             {
-                entry = new AiSummary
+                await using var db = _dbContextFactory.CreateDbContext();
+                var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+                if (entry is null)
                 {
-                    UserId = userId,
-                    Summary = summary,
-                    LastUpdated = DateTime.UtcNow
-                };
-                db.AiSummaries.Add(entry);
-            }
-            else
-            {
-                entry.Summary = summary;
-                entry.LastUpdated = DateTime.UtcNow;
-            }
+                    entry = new AiSummary
+                    {
+                        UserId = userId,
+                        Summary = summary,
+                        LastUpdated = DateTime.UtcNow
+                    };
+                    db.AiSummaries.Add(entry);
+                }
+                else
+                {
+                    entry.Summary = summary;
+                    entry.LastUpdated = DateTime.UtcNow;
+                }
 
-            await db.SaveChangesAsync();
+                await db.SaveChangesAsync();
+            });
         }
 
         public async Task ClearCachedSummaryAsync(string userId)
         {
-            await using var db = _dbContextFactory.CreateDbContext();
-            var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
-            if (entry is not null)
+            await _safeExecutor.ExecuteAsync(async () =>
             {
-                db.AiSummaries.Remove(entry);
-                await db.SaveChangesAsync();
-            }
+                await using var db = _dbContextFactory.CreateDbContext();
+                var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
+                if (entry is not null)
+                {
+                    db.AiSummaries.Remove(entry);
+                    await db.SaveChangesAsync();
+                }
+            });
         }
     }
 }

@@ -1,0 +1,16 @@
+// Src/Components/ErrorBoundary.razor
+@using TimeTracker.Services
+@inherits ErrorBoundaryBase
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Inject] private IErrorHandlingService? ErrorHandler { get; set; }
+    
+    protected override Task OnErrorAsync(Exception exception)
+    {
+        return ErrorHandler.HandleExceptionAsync(exception, nameof(ErrorBoundary));
+    }
+}
