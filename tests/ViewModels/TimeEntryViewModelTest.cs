@@ -72,6 +72,63 @@ namespace TimeTracker.Tests.ViewModels
             Assert.That(_stateChangedFired, Is.True);
         }
 
-        // Fler tester för övriga metoder
+        [Test]
+        public void HandleMonthDataLoaded_UpdatesMonthWorkDays()
+        {
+            // Arrange
+            var workDays = new List<WorkDay> 
+            { 
+                new WorkDay { Date = new DateTime(2025, 6, 1), TimeEntries = new List<TimeEntry>() }
+            };
+            
+            // Act
+            _viewModel.HandleMonthDataLoaded(workDays);
+            
+            // Assert
+            Assert.That(_viewModel.MonthWorkDays, Is.EqualTo(workDays));
+        }
+        
+        [Test]
+        public void HandleDaySelected_UpdatesSelectedDayAndTimeEntries()
+        {
+            // Arrange
+            var selectedDay = new DateTime(2025, 6, 1);
+            var timeEntries = new List<TimeEntry> 
+            { 
+                new TimeEntry { Id = 1, WorkDate = selectedDay, HoursWorked = 8 } 
+            };
+            var workDays = new List<WorkDay> 
+            { 
+                new WorkDay { Date = selectedDay, TimeEntries = timeEntries }
+            };
+            _viewModel.HandleMonthDataLoaded(workDays);
+            _stateChangedFired = false;
+            
+            // Act
+            _viewModel.HandleDaySelected(selectedDay);
+            
+            // Assert
+            Assert.That(_viewModel.SelectedDay, Is.EqualTo(selectedDay));
+            Assert.That(_viewModel.DayTimeEntry, Is.EqualTo(timeEntries));
+            Assert.That(_stateChangedFired, Is.True);
+        }
+        
+        [Test]
+        public void HandleTimeEntriesChanged_UpdatesDayTimeEntries()
+        {
+            // Arrange
+            var timeEntries = new List<TimeEntry> 
+            { 
+                new TimeEntry { Id = 1, WorkDate = DateTime.Today, HoursWorked = 8 } 
+            };
+            _stateChangedFired = false;
+            
+            // Act
+            _viewModel.HandleTimeEntriesChanged(timeEntries);
+            
+            // Assert
+            Assert.That(_viewModel.DayTimeEntry, Is.EqualTo(timeEntries));
+            Assert.That(_stateChangedFired, Is.True);
+        }
     }
 }
