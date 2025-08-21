@@ -108,7 +108,7 @@ namespace TimeTracker.Areas.Identity.Pages.Account
                 // Custom validation rule, only allow email addresses from softronic.se
                 if (!Input.Email.EndsWith("@softronic.se", StringComparison.OrdinalIgnoreCase))
                 {
-                    ModelState.AddModelError(string.Empty, "Endast e-postadresser fr�n softronic.se �r till�tna.");
+                    ModelState.AddModelError(string.Empty, "Endast e‑postadresser från softronic.se är tillåtna.");
                     return Page();
                 }
 
