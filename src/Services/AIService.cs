@@ -23,7 +23,7 @@ namespace TimeTracker.Services
         // Spåra senaste anropstid (global rate-limit)
         private static DateTime _lastCallTime = DateTime.MinValue;
 
-        // Två systemmeddelanden, som du kan växla mellan
+        // Systemmeddelande för AI-sammanfattningen
         private const string SummarySystemMessage = @"
             Du är en professionell assistent som hjälper användaren att svara sin chef på frågan: 'Vad har du gjort under veckan?'.
 
