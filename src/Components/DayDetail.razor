@@ -20,6 +20,22 @@
                     OnProjectChanged="ViewModel.HandleProjectsChanged"/>
                 <ValidationMessage For="@(() => ViewModel.TimeEntry.ProjectId)"/>
             </div>
+            
+            <div class="col-md-2">
+                <label>Ticket</label>
+                <InputText @bind-Value="ViewModel.TimeEntry.TicketKey"
+                           class="form-control"
+                           placeholder="ABC-123"
+                           disabled="@(!ViewModel.IsAuthenticated)"/>
+            </div>
+            <div class="col-md-3">
+                <label>Ticket URL</label>
+                <InputText @bind-Value="ViewModel.TimeEntry.TicketUrl"
+                           class="form-control"
+                           placeholder="https://jira.example.com/browse/ABC-123"
+                           disabled="@(!ViewModel.IsAuthenticated)"/>
+                <ValidationMessage For="@(() => ViewModel.TimeEntry.TicketUrl)" />
+            </div>
 
             <div class="col-md-2">
                 <label>Timmar</label>
@@ -57,6 +73,7 @@
             <thead class="table-light">
             <tr>
                 <th>Projekt</th>
+                <th>Ticket</th>
                 <th>Timmar</th>
                 <th>Kommentar</th>
                 <th></th>
@@ -67,6 +84,16 @@
             {
                 <tr>
                     <td>@item.Project?.Name</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(item.TicketUrl) && !string.IsNullOrWhiteSpace(item.TicketKey))
+                        {
+                            <a href="@item.TicketUrl" target="_blank" rel="noopener noreferrer">@item.TicketKey</a>
+                        }
+                        else
+                        {
+                            <td>@item.TicketKey</td>
+                        }
+                    </td>
                     <td>@item.HoursWorked</td>
                     <td>@item.Comment</td>
                     <td class="text-end">
