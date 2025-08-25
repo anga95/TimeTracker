@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TimeTracker.Data;
 
@@ -11,9 +12,11 @@ using TimeTracker.Data;
 namespace TimeTracker.Migrations
 {
     [DbContext(typeof(TimeTrackerContext))]
-    partial class TimeTrackerContextModelSnapshot : ModelSnapshot
+    [Migration("20250825094517_AddTicketsAndLoggedAt_And_MapWorkDateToDate")]
+    partial class AddTicketsAndLoggedAt_And_MapWorkDateToDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -302,24 +305,22 @@ namespace TimeTracker.Migrations
                         .HasColumnType("float");
 
                     b.Property<DateTimeOffset>("LoggedAt")
-                        .HasColumnType("datetimeoffset(7)");
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
 
                     b.Property<string>("TicketKey")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TicketUrl")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("WorkDate")
-                        .HasColumnType("date");
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("WorkDayId")
                         .HasColumnType("int");
