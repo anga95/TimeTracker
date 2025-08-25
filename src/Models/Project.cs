@@ -4,7 +4,8 @@ public class Project
 {
     public int Id { get; set; }
     public string Name { get; set; } = null!;
-
-    // Navigation property - en lista av TimeEntries som hör till projektet
     public List<TimeEntry> TimeEntries { get; set; } = new();
+    
+    // Soft delete flag
+    public bool IsArchived { get; set; } = false;
 }
