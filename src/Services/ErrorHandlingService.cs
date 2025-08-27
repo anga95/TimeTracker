@@ -16,29 +16,30 @@ public class ErrorHandlingService : IErrorHandlingService
         _navigationManager = navigationManager;
     }
     
-    public async Task HandleExceptionAsync(Exception ex, string source = null)
+    public Task HandleExceptionAsync(Exception ex, string? source = null)
     {
         _logger.LogError(ex, "Ett fel inträffade i {Source}: {Message}", source ?? "okänd källa", ex.Message);
         
         string userMessage = "Ett oväntat fel inträffade. Vänligen försök igen senare.";
         OnError?.Invoke(userMessage, ErrorSeverity.Error);
         
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
     
-    public async Task HandleValidationErrorAsync(string message, string source = null, IDictionary<string, string[]> errors = null)
+    public Task HandleValidationErrorAsync(string message, string? source = null, IDictionary<string, string[]>? errors = null)
     {
         _logger.LogWarning("Valideringsfel i {Source}: {Message}, Detaljer: {@Errors}", 
             source ?? "okänd källa", message, errors);
     
         OnError?.Invoke(message, ErrorSeverity.Warning);
         
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
-    public async Task HandleApiErrorAsync(HttpResponseMessage response, string source = null)
+    public async Task HandleApiErrorAsync(HttpResponseMessage response, string? source = null)
     {
         string content = await response.Content.ReadAsStringAsync();
+        
         _logger.LogError("API-fel i {Source}: {StatusCode}, Detaljer: {Content}", 
             source ?? "okänd källa", (int)response.StatusCode, content);
         
@@ -53,14 +54,14 @@ public class ErrorHandlingService : IErrorHandlingService
         OnError?.Invoke(userMessage, ErrorSeverity.Error);
     }
     
-    public async Task HandleDatabaseErrorAsync(DbException ex, string source = null)
+    public Task HandleDatabaseErrorAsync(DbException ex, string? source = null)
     {
         bool isWakeUpTimeout = ex.Message.Contains("Connection Timeout Expired") &&
                                ex.Message.Contains("post-login phase");
 
         if (isWakeUpTimeout)
         {
-            _logger.LogInformation(ex, "Databasaktivering i {source}:  Azure SQL Database väcks",
+            _logger.LogInformation(ex, "Databasaktivering i {Source}:  Azure SQL Database väcks",
                 source ?? "okänd källa");
         }
         else
@@ -72,14 +73,14 @@ public class ErrorHandlingService : IErrorHandlingService
                 ErrorSeverity.Error);
         }
     
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
     
-    public async Task<bool> TryRecoverAsync()
+    public Task<bool> TryRecoverAsync()
     {
 
         _logger.LogInformation("Försöker återställa applikationsläget efter ett fel");
         
-        return await Task.FromResult(true);
+        return Task.FromResult(true);
     }
 }
