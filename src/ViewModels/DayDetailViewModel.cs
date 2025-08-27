@@ -66,16 +66,44 @@ namespace TimeTracker.ViewModels
         public async Task HandleValidSubmit(EditContext context)
         {
             if (TimeEntry.ProjectId == 0) return;
+            
+            var workDate = Day.Date;
+            string? normalizedUrl = NormalizeUrl(TimeEntry.TicketUrl);
 
             var timeEntryToSubmit = new TimeEntry
             {
-                WorkDate = TimeEntry.WorkDate,
+                WorkDate = workDate,
                 ProjectId = TimeEntry.ProjectId,
                 HoursWorked = TimeEntry.HoursWorked,
-                Comment = TimeEntry.Comment
+                Comment = TimeEntry.Comment,
+                TicketKey = TimeEntry.TicketKey,
+                TicketUrl = normalizedUrl,
+                LoggedAt = DateTimeOffset.UtcNow
             };
 
             await AddTimeEntry(timeEntryToSubmit);
+        }
+
+        private string? NormalizeUrl(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return null;
+            url = url.Trim();
+            
+            if (url.StartsWith("//")) return "https:" + url;
+
+            
+            if (Uri.TryCreate(url, UriKind.Absolute, out var abs) &&
+                (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps))
+            {
+                return abs.ToString();
+            }
+                
+            if (Uri.TryCreate("https://" + url, UriKind.Absolute, out var absHttps)
+                && (absHttps.Scheme == Uri.UriSchemeHttp || absHttps.Scheme == Uri.UriSchemeHttps))
+            {
+                return absHttps.ToString();
+            }
+            return null;
         }
         
         private void ResetForm()

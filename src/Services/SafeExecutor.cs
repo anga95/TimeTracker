@@ -44,7 +44,7 @@ public class SafeExecutor
         }
     }
     
-    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, T defaultValue = default)
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, Func<T> fallback) where T : notnull
     {
         string source = GetCallerInfo();
         
@@ -55,7 +55,7 @@ public class SafeExecutor
         catch (DbException ex)
         {
             await _errorHandler.HandleDatabaseErrorAsync(ex, source);
-            return defaultValue;
+            return fallback();
         }
         catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
         {
@@ -65,19 +65,22 @@ public class SafeExecutor
             };
             
             await _errorHandler.HandleApiErrorAsync(response, source);
-            return defaultValue;
+            return fallback();
         }
         catch (ValidationException ex)
         {
             await _errorHandler.HandleValidationErrorAsync(ex.Message, source);
-            return defaultValue;
+            return fallback();
         }
         catch (Exception ex)
         {
             await _errorHandler.HandleExceptionAsync(ex, source);
-            return defaultValue;
+            return fallback();
         }
     }
+    
+    public Task<List<TItem>> ExecuteListAsync<TItem>(Func<Task<List<TItem>>> action)
+        => ExecuteAsync(action, static () => new List<TItem>());
     
     private string GetCallerInfo()
     {

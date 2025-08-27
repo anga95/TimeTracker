@@ -107,7 +107,8 @@ namespace TimeTracker.Services
 
                 result.Summary = raw;
                 return result;
-            }, new ChatResponseResult 
+            },
+                fallback: () => new ChatResponseResult 
             { 
                 IsRateLimited = false,
                 Summary = "Ett fel uppstod när AI-sammanfattningen skulle genereras. Försök igen senare."
@@ -128,7 +129,8 @@ namespace TimeTracker.Services
                 int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
                 Console.WriteLine($"AI calls this month: {monthlyCalls}/{_maxCallsPerMonth}");
                 return monthlyCalls < _maxCallsPerMonth;
-            }, true);
+            },
+                fallback: static () => true);
         }
 
         private async Task LogAiCallAsync(string prompt)
@@ -155,7 +157,8 @@ namespace TimeTracker.Services
                 var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
                 int monthlyCalls = await db.AiUsageLogs.CountAsync(log => log.Timestamp >= monthStart);
                 return (monthlyCalls, _maxCallsPerMonth);
-            });
+            },
+                fallback: () => (0, _maxCallsPerMonth));
         }
         
         public async Task<string?> GetCachedSummaryAsync(string userId)
@@ -165,7 +168,8 @@ namespace TimeTracker.Services
                 await using var db = _dbContextFactory.CreateDbContext();
                 var entry = await db.AiSummaries.FirstOrDefaultAsync(s => s.UserId == userId);
                 return entry?.Summary;
-            });
+            },
+                fallback: static () => string.Empty);
         }
 
         public async Task SaveOrUpdateSummaryAsync(string userId, string summary)

@@ -11,6 +11,8 @@ public interface ITimeTrackingService
     Task<List<WorkDay>> GetWorkDaysForMonthAsync(string userId, int year, int month);
     Task<List<WorkDay>> GetWorkDaysForLastNDaysAsync(string userId, int days);
 
+    Task ArchiveProjectAsync(int projectId);
+    Task UnarchiveProjectAsync(int projectId);
 
     Task CreateProjectAsync(string projectName, string userId);
     Task DeleteProjectAsync(int projectId);

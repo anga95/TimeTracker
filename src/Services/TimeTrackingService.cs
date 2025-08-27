@@ -54,7 +54,7 @@ namespace TimeTracker.Services
 
         public async Task<List<WorkDay>> GetWorkDaysAsync(string userId)
         {
-            return await _safeExecutor.ExecuteAsync(async () =>
+            return await _safeExecutor.ExecuteListAsync(async () =>
             {
                 // if no user id is provided, return demo data
                 if (string.IsNullOrEmpty(userId))
@@ -80,7 +80,7 @@ namespace TimeTracker.Services
 
         public async Task<List<WorkDay>> GetWorkDaysForMonthAsync(string userId, int year, int month)
         {
-            return await _safeExecutor.ExecuteAsync(async () =>
+            return await _safeExecutor.ExecuteListAsync(async () =>
             {
                 if (string.IsNullOrEmpty(userId))
                 {
@@ -106,7 +106,7 @@ namespace TimeTracker.Services
         
         public async Task<List<WorkDay>> GetWorkDaysForLastNDaysAsync(string userId, int days)
         {
-            return await _safeExecutor.ExecuteAsync(async () =>
+            return await _safeExecutor.ExecuteListAsync(async () =>
             {
                 // If no user id is provided, return demo data
                 DateTime cutoff = DateTime.Today.AddDays(-days);
@@ -129,6 +129,33 @@ namespace TimeTracker.Services
             });
         }
 
+        public async Task ArchiveProjectAsync(int projectId)
+        {
+            await _safeExecutor.ExecuteAsync(async () =>
+            {
+                await using var context = _contextFactory.CreateDbContext();
+                
+                var project = await context.Projects.FirstOrDefaultAsync( p => p.Id == projectId);
+                if (project == null) return;
+                if (project.IsArchived) return;
+                
+                project.IsArchived = true;
+                await context.SaveChangesAsync();
+            });
+        }
+
+        public async Task UnarchiveProjectAsync(int projectId)
+        {
+            await _safeExecutor.ExecuteAsync(async () =>
+            {
+                await using var context = _contextFactory.CreateDbContext();
+                var project = await context.Projects.FirstOrDefaultAsync( p => p.Id == projectId);
+                if (project is null) return;
+                project.IsArchived = false;
+                await context.SaveChangesAsync();
+            });
+        }
+
         public async Task<double> GetRoundedDailyTotalAsync(DateTime date, string userId)
         {
             return await _safeExecutor.ExecuteAsync(async () =>
@@ -147,12 +174,13 @@ namespace TimeTracker.Services
                 var rounded = Math.Ceiling(totalMinutes / 30) * 30;
 
                 return rounded / 60; // timmar
-            });
+            },
+                fallback: static () => 0d);
         }
 
         public async Task<List<Project>> GetProjectsAsync(string userId)
         {
-            return await _safeExecutor.ExecuteAsync(async () =>
+            return await _safeExecutor.ExecuteListAsync(async () =>
             {
                 // if no user id is provided, return demo data
                 if (string.IsNullOrEmpty(userId))
@@ -162,6 +190,7 @@ namespace TimeTracker.Services
 
                 await using var context = _contextFactory.CreateDbContext();
                 return await context.Projects
+                    .Where( p => !p.IsArchived)
                     .OrderBy(p => p.Name)
                     .ToListAsync();
             });
@@ -180,18 +209,7 @@ namespace TimeTracker.Services
 
         public async Task DeleteProjectAsync(int projectId)
         {
-            await _safeExecutor.ExecuteAsync(async () =>
-            {
-                await using var context = _contextFactory.CreateDbContext();
-                var project = await context.Projects
-                    .Include(p => p.TimeEntries)
-                    .FirstOrDefaultAsync(p => p.Id == projectId);
-                if (project == null)
-                    return;
-
-                context.Projects.Remove(project);
-                await context.SaveChangesAsync();
-            });
+            await ArchiveProjectAsync(projectId);
         }
 
         public async Task DeleteTimeEntryAsync(int TimeEntryId)
