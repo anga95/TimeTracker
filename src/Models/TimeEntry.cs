@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.CompilerServices;
 
 namespace TimeTracker.Models;
 
-public class TimeEntry
+public class TimeEntry : IValidatableObject
 {
     public int Id { get; set; }
     
@@ -32,4 +33,14 @@ public class TimeEntry
     public double DurationMinutes => HoursWorked * 60;
 
     public string? UserId { get; set; }
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (!string.IsNullOrWhiteSpace(TicketUrl) && string.IsNullOrWhiteSpace(TicketKey))
+        {
+            yield return new ValidationResult(
+                "Ange Ticket när du anger en Ticket URL",
+                new []{ nameof(TicketKey) }
+                );
+        }
+    }
 }

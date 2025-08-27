@@ -30,14 +30,14 @@ builder.Services.AddServerSideBlazor();
 #region Entity Framework Core & SQL Server
 
 // register DbContext with retry logic for transient errors
-builder.Services.AddDbContext<TimeTrackerContext>(
-    options => options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 10,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorNumbersToAdd: null
-        )
+builder.Services.AddDbContext<TimeTrackerContext>(options =>
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("DefaultConnection"),
+            sqlOptions => sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null
+            )
     ),
     ServiceLifetime.Scoped,
     ServiceLifetime.Singleton
