@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -38,7 +39,20 @@ namespace TimeTracker.ViewModels
         }
         
         public List<Project> Projects { get; set; } = new();
-        public int SelectedProjectId { get; set; }
+        private int _selectedProjectId;
+
+        public int SelectedProjectId
+        {
+            get => _selectedProjectId;
+            set
+            {
+                if (_selectedProjectId == value) return;
+                
+                _selectedProjectId = value;
+                _ = SelectedProjectIdChanged?.Invoke(value);
+                NotifyStateChanged();
+            }
+        }
         
         public event Action? StateChanged;
         public event Func<int, Task>? SelectedProjectIdChanged;
@@ -115,15 +129,38 @@ namespace TimeTracker.ViewModels
                 }
             }
         }
-        
-        public async Task OnSelectionChanged(ChangeEventArgs e)
+
+        public async Task ArchiveProjectWithConfirmation()
         {
-            if (int.TryParse(e.Value?.ToString(), out int newValue))
+            if (SelectedProjectId == 0) return;
+
+            try
             {
-                SelectedProjectId = newValue;
+                var archiveProject = await _jsRuntime.InvokeAsync<bool>(
+                    "confirm",
+                    "Arkivera projektet?"
+                    );
+                
+                if (!archiveProject) return;
+                
+                await _timeService.ArchiveProjectAsync(SelectedProjectId);
+                
+                SelectedProjectId = 0;
                 
                 if (SelectedProjectIdChanged != null)
-                    await SelectedProjectIdChanged.Invoke(newValue);
+                    await SelectedProjectIdChanged.Invoke(SelectedProjectId);
+
+                if (ProjectChanged != null)
+                    await ProjectChanged.Invoke();
+                
+            }
+            catch (ValidationException ex)
+            {
+                await _jsRuntime.InvokeVoidAsync("alert", ex.Message);
+            }
+            catch (Exception ex)
+            {
+                await _jsRuntime.InvokeVoidAsync("alert", $"Fel vid arkivering av projekt: {ex.Message}");
             }
         }
         

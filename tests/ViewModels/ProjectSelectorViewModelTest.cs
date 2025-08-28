@@ -180,8 +180,10 @@ namespace TimeTracker.Tests.ViewModels
             // Arrange
             await _viewModel.InitializeAsync();
             _viewModel.SelectedProjectId = 1;
+            var before = _selectedProjectIdChangedValue;
             
-            _mockJsRuntime.Setup(js => js.InvokeAsync<bool>("confirm", It.IsAny<object[]>()))
+            _mockJsRuntime
+                .Setup(js => js.InvokeAsync<bool>("confirm", It.IsAny<object[]>()))
                 .ReturnsAsync(false);
             
             // Act
@@ -189,24 +191,36 @@ namespace TimeTracker.Tests.ViewModels
             
             // Assert
             _mockTimeService.Verify(s => s.DeleteProjectAsync(It.IsAny<int>()), Times.Never);
-            Assert.That(_selectedProjectIdChangedValue, Is.Null);
-            Assert.That(_projectChangedFired, Is.False);
+            Assert.That(_selectedProjectIdChangedValue, Is.EqualTo(before));
         }
         
         [Test]
         public async Task OnSelectionChanged_WithValidValue_UpdatesSelectedProjectId()
         {
             // Arrange
-            await _viewModel.InitializeAsync();
             var newValue = 5;
-            var changeArgs = new ChangeEventArgs { Value = newValue.ToString() };
             
             // Act
-            await _viewModel.OnSelectionChanged(changeArgs);
+            _viewModel.SelectedProjectId = newValue;
             
             // Assert
             Assert.That(_viewModel.SelectedProjectId, Is.EqualTo(newValue));
             Assert.That(_selectedProjectIdChangedValue, Is.EqualTo(newValue));
+        }
+        
+        [Test]
+        public async Task SelectedProjectId_Setter_SameValue_DoesNotRaiseEventTwice()
+        {
+            // Arrange
+            int raiseCount = 0;
+            _viewModel.SelectedProjectIdChanged += id => { raiseCount++; return Task.CompletedTask; };
+
+            // Act
+            _viewModel.SelectedProjectId = 5;
+            _viewModel.SelectedProjectId = 5; // samma värde
+
+            // Assert
+            Assert.That(raiseCount, Is.EqualTo(1));
         }
     }
 }

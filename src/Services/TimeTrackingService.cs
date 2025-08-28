@@ -206,10 +206,21 @@ namespace TimeTracker.Services
                 await context.SaveChangesAsync();
             });
         }
-
+        
         public async Task DeleteProjectAsync(int projectId)
         {
-            await ArchiveProjectAsync(projectId);
+            await _safeExecutor.ExecuteAsync(async () =>
+            {
+                await using var context = _contextFactory.CreateDbContext();
+                var project = await context.Projects
+                    .Include(p => p.TimeEntries)
+                    .FirstOrDefaultAsync(p => p.Id == projectId);
+                if (project == null)
+                    return;
+
+                context.Projects.Remove(project);
+                await context.SaveChangesAsync();
+            });
         }
 
         public async Task DeleteTimeEntryAsync(int TimeEntryId)

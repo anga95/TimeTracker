@@ -6,14 +6,12 @@
 @implements IDisposable
 
 <div class="input-group">
-  <select class="form-select"
-          value="@ViewModel.SelectedProjectId"
-          @onchange="ViewModel.OnSelectionChanged">
-    <option value="0">-- Välj projekt --</option>
-    @foreach (var p in ViewModel.Projects)
-    {
-      <option value="@p.Id">@p.Name</option>
-    }
+    <select class="form-select" @bind="ViewModel.SelectedProjectId">
+        <option value="0">-- Välj projekt --</option>
+        @foreach (var p in ViewModel.Projects)
+        {
+          <option value="@p.Id">@p.Name</option>
+        }
   </select>
 
   <button class="btn btn-outline-secondary"
@@ -25,8 +23,8 @@
   <button class="btn btn-outline-danger"
           type="button"
           disabled="@(ViewModel.SelectedProjectId == 0)"
-          @onclick="ViewModel.DeleteProjectWithConfirmation">
-    <i class="bi bi-trash"></i>
+          @onclick="ViewModel.ArchiveProjectWithConfirmation">
+    <i class="bi bi-archive"></i>
   </button>
 </div>
 
